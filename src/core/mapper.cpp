@@ -69,7 +69,7 @@ private:
 };
 
 GMapping::OrientedPoint to_gmapping(const Pose2D& p) { return GMapping::OrientedPoint(p.x, p.y, p.theta); }
-Pose2D from_gmapping(const GMapping::OrientedPoint& p) { return Pose2D{p.x, p.y, p.theta}; }
+Pose2D from_gmapping(const GMapping::OrientedPoint& p) { return Pose2D{p.x, p.y, std::atan2(std::sin(p.theta), std::cos(p.theta))}; }
 
 double normalize_angle(double a) { return std::atan2(std::sin(a), std::cos(a)); }
 

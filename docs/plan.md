@@ -44,8 +44,8 @@
 
 ```
 juiz run mobile_sim                      (kind: base, ipc://mobile_sim, http :8000)
-  main_ec 50 Hz: step
-  sensor_ec 10 Hz: get_scan → topic "scan", get_odometry → topic "odom"   ← M2 で追加
+  main_ec 20 Hz: step → get_odom_pose → topic "odom" → get_scan → topic "scan"   ← M2 で追加
+  (main_loop_ec は 1 システムに 1 つだけなので、別の EC にせず同じ周回で出す)
         │ ipc
         ▼
 juiz run mapper_gmapping-x.y.z.juizapp   (kind: app, depends: mobile_sim, http :8001)
@@ -128,3 +128,4 @@ mapper の HTTP ブローカー(8001)で `web/` を配信する。地図(数秒�
 - **Windows・macOS のビルド**: 古いコードなので、MSVC で直しが要るかもしれない。直しは OpenJUIZ/openslam_gmapping への PR にするか、こちらでパッチを当てるかをそのときに相談する。
 - **スキャンとオドメトリの時刻合わせ**: 別のトピックで受けるので少しずれる。シミュレータでは問題ない見込みだが、結合テストで地図がぶれるなら mobile_sim に組で返すプロセスを足す。
 - **処理時間**: 粒子数を増やすと `processScan` が重くなる。トピックの購読側で詰まらないか M2 で測り、必要なら別スレッドにする。
+  - M2 で測った結果: 30 粒子で更新 1 回は約 0.1 秒。20 Hz のスキャンのうち更新は 0.5 m か 0.5 rad 動いたときだけなので、結合テスト(115 秒、2078 スキャン)で詰まりは無かった。別スレッドは M3 で画面を付けて様子を見てから決める。

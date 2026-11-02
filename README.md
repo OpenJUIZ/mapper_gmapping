@@ -2,7 +2,7 @@
 
 [GMapping](https://github.com/OpenJUIZ/openslam_gmapping) を使って、LiDAR のスキャンとオドメトリから地図と自己位置を推定する [JUIZ](https://github.com/OpenJUIZ/juiz) のアプリです。`.juizapp` として配布し、[mobile_sim](https://github.com/OpenJUIZ/mobile_sim) と組み合わせて使います。
 
-> 状態: 開発中です(M1 SLAM 本体まで)。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
+> 状態: 開発中です(M2 juiz のコンポーネントと mobile_sim との連携まで)。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
 
 ## 構成
 
@@ -56,6 +56,38 @@ mapper_gmapping::save_map(grid, "maps/room");    // maps/room.yaml と maps/room
 pip install juiz-cli==0.1.0
 scripts/dev_plugin.sh          # プラグインと libjuiz_sdk を app/plugins/<target>/ に置く
 python3 scripts/smoke_test.py  # juiz を起動して、HTTP からプロセスを呼ぶ
+```
+
+### mobile_sim と動かす
+
+mobile_sim(0.2.0 以降)はトピック `odom`(`Pose2DStamped`)と `scan`(`LaserScan`)を出します。`app/app.conf` は IPC で `mobile_sim` につなぎ、この 2 つを購読して地図を作ります。
+
+```sh
+# mobile_sim のリポジトリで(scripts/dev_plugin.sh の後)
+cd app && juiz -f app.conf -d --ipc mobile_sim
+# こちらで
+cd app && juiz -f app.conf -d
+```
+
+mobile_sim の画面(http://localhost:8000/)でロボットを動かすと、地図が育ちます。`curl` などで呼べる主な ContainerProcess(コンテナ `gmapping`、インスタンス `mapper0`):
+
+| ContainerProcess | 引数 | 戻り値 |
+| --- | --- | --- |
+| `gmapping_set_odometry` | `odom: Pose2DStamped` | なし。トピック `odom` を購読 |
+| `gmapping_add_scan` | `scan: LaserScan` | 地図を更新したか。トピック `scan` を購読(オドメトリが来る前のスキャンは捨てる) |
+| `gmapping_get_pose` | なし | `Pose2DStamped`(frame `map`) |
+| `gmapping_get_map` | なし | 地図の画像(L8。占有 0、空き 254、不明 205) |
+| `gmapping_get_map_info` | なし | `{resolution, origin, width, height, updates, ...}` |
+| `gmapping_save_map` | `path` | `<path>.yaml` と `<path>.png`(ROS map_server の形式)を書き、YAML のパスを返す |
+| `gmapping_reset` | なし | なし(地図を捨てて最初から) |
+| `gmapping_get_state` | なし | 粒子、軌跡、オドメトリ、`map_to_odom` など(画面用) |
+
+GMapping の引数(`particles`、`delta`、`xmin` など slam_gmapping と同じ名前)と `laser_pose`、`map_update_interval` はコンテナの引数で変えられます。
+
+結合テストは mobile_sim を部屋で一周させ、SLAM の姿勢と地図を真の値と比べます(手元では 115 秒走って誤差 0.011 m、オドメトリだけだと 0.69 m、占有セルの 96% が真の壁の 0.1 m 以内)。
+
+```sh
+python3 scripts/integration_test.py --mobile-sim ../mobile_sim
 ```
 
 ## ライセンス
