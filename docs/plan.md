@@ -22,7 +22,7 @@
 - 使う API は ROS の slam_gmapping と同じ: `setSensorMap`、`init(粒子数, xmin, ymin, xmax, ymax, delta, 初期姿勢)`、`setMatchingParameters`、`setMotionModelParameters`、`setUpdateDistances`、`processScan(RangeReading)`、`getBestParticleIndex`。地図は最良の粒子の軌跡から `ScanMatcher` で作り直す(slam_gmapping の `updateMap` と同じやり方)。
 - 1 スキャンのビーム数の上限は 2048(`LASER_MAXBEAMS`)。mobile_sim の既定 271 本は問題ない。
 - `cmake_minimum_required(VERSION 2.8)` のため、CMake 4 では `CMAKE_POLICY_VERSION_MINIMUM=3.5` を付けないと構成できない。fork 側で 3.10 に上げる小さな変更を推奨する。
-- リポジトリに LICENSE ファイルが無い(package.xml は BSD)。配布する前に LICENSE を足すことを推奨する([決めてほしいこと](#決めてほしいこととリスク))。
+- リポジトリに LICENSE ファイルが無く、一部のファイルに古い CC BY-NC-SA 2.0 の表記が残っている(上流は 2019 年に BSD-3-Clause に変更済み)。配布する前に上流を取り込み LICENSE を足すことを推奨する([決めてほしいこと](#決めてほしいこととリスク))。
 
 ### juiz の C++ 対応(0.1.0)
 
@@ -124,7 +124,7 @@ mapper の HTTP ブローカー(8001)で `web/` を配信する。地図(数秒�
 
 既知のリスクは次の 4 つ。
 
-- **ライセンス**: openslam_gmapping に LICENSE ファイルが無い。元の GMapping(OpenSLAM)は BSD とされているが、配布物に入れるので fork に LICENSE を足してほしい。mapper_gmapping 自体は mobile_sim と同じ MIT OR Apache-2.0 を推奨。
+- **ライセンス**: GMapping は元は CC BY-NC-SA 2.0(非営利)で、ysuga/openslam_gmapping(2014 年の fork)の一部のファイル(gui、carmenwrapper)にもその表記が残っている。元の ros-perception/openslam_gmapping は 2019 年の 0.2.0(#29)で著作者の Grisetti・Stachniss・Burgard の名前のまま BSD-3-Clause に変わった。fork に上流の 0.2.x を取り込み、LICENSE(BSD-3-Clause)を足してから配布したい。mapper_gmapping 自体は mobile_sim と同じ MIT OR Apache-2.0 を推奨。
 - **Windows・macOS のビルド**: 古いコードなので、MSVC で直しが要るかもしれない。直しは fork(ysuga/openslam_gmapping)への PR にするか、こちらでパッチを当てるかをそのときに相談する。
 - **スキャンとオドメトリの時刻合わせ**: 別のトピックで受けるので少しずれる。シミュレータでは問題ない見込みだが、結合テストで地図がぶれるなら mobile_sim に組で返すプロセスを足す。
 - **処理時間**: 粒子数を増やすと `processScan` が重くなる。トピックの購読側で詰まらないか M2 で測り、必要なら別スレッドにする。
