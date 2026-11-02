@@ -1,0 +1,7 @@
+/build*/
+/.juiz_sdk/
+*.juizapp
+/app/plugins/
+/dist/
+.DS_Store
+/app/.smoke_test.conf
