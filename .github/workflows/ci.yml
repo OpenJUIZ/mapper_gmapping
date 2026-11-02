@@ -29,6 +29,13 @@ jobs:
           cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: Test with sanitizers
+        # GMapping の木の解放とスキャンの解放を確かめる (時間のかかる SLAM のテストは --quick で飛ばす)
+        run: |
+          cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DMAPPER_GMAPPING_BUILD_COMPONENT=OFF \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined"
+          cmake --build build-asan --parallel
+          (cd build-asan/tests && ./core_test --quick)
       - name: Install juiz
         # C++ のプラグインは C ABI なので、pip の juiz でも読める(rustc を揃えなくてよい)
         run: pip install "juiz-cli==$JUIZ_VERSION"

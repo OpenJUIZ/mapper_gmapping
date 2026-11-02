@@ -20,6 +20,8 @@ if (MSVC)
 endif ()
 
 # GMapping は静的ライブラリにしてプラグインに入れる(配るのはプラグインと libjuiz_sdk だけにする)
+# (CMP0077: openslam_gmapping の option() がこの変数を上書きしないように)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(third_party/openslam_gmapping EXCLUDE_FROM_ALL)
