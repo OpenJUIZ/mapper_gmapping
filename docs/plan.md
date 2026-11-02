@@ -4,7 +4,7 @@
 
 ## 目的と要件
 
-[ysuga/openslam_gmapping](https://github.com/ysuga/openslam_gmapping)(ROS への依存を外した GMapping)を JUIZ のコンポーネントで包み、LiDAR のスキャンとオドメトリから地図と自己位置を推定する SLAM を `.juizapp` として配布する。まずは [mobile_sim](https://github.com/OpenJUIZ/mobile_sim) と組み合わせて、シミュレータの中で地図を作れるようにする。
+[OpenJUIZ/openslam_gmapping](https://github.com/OpenJUIZ/openslam_gmapping)(ROS への依存を外した GMapping)を JUIZ のコンポーネントで包み、LiDAR のスキャンとオドメトリから地図と自己位置を推定する SLAM を `.juizapp` として配布する。まずは [mobile_sim](https://github.com/OpenJUIZ/mobile_sim) と組み合わせて、シミュレータの中で地図を作れるようにする。
 
 | # | 要件 | 方針 |
 | --- | --- | --- |
@@ -124,7 +124,7 @@ mapper の HTTP ブローカー(8001)で `web/` を配信する。地図(数秒�
 
 既知のリスクは次の 4 つ。
 
-- **ライセンス**: GMapping は元は CC BY-NC-SA 2.0(非営利)で、ysuga/openslam_gmapping(2014 年の fork)の一部のファイル(gui、carmenwrapper)にもその表記が残っている。元の ros-perception/openslam_gmapping は 2019 年の 0.2.0(#29)で著作者の Grisetti・Stachniss・Burgard の名前のまま BSD-3-Clause に変わった。fork に上流の 0.2.x を取り込み、LICENSE(BSD-3-Clause)を足してから配布したい。mapper_gmapping 自体は mobile_sim と同じ MIT OR Apache-2.0 を推奨。
-- **Windows・macOS のビルド**: 古いコードなので、MSVC で直しが要るかもしれない。直しは fork(ysuga/openslam_gmapping)への PR にするか、こちらでパッチを当てるかをそのときに相談する。
+- **ライセンス**: GMapping は元は CC BY-NC-SA 2.0(非営利)で、OpenJUIZ/openslam_gmapping(2014 年の fork、2026-11-02 に ysuga から移管)の一部のファイル(gui、carmenwrapper)にもその表記が残っている。元の ros-perception/openslam_gmapping は 2019 年の 0.2.0(#29)で著作者の Grisetti・Stachniss・Burgard の名前のまま BSD-3-Clause に変わった。fork に上流の 0.2.x を取り込み、LICENSE(BSD-3-Clause)を足してから配布したい。mapper_gmapping 自体は mobile_sim と同じ MIT OR Apache-2.0 を推奨。
+- **Windows・macOS のビルド**: 古いコードなので、MSVC で直しが要るかもしれない。直しは OpenJUIZ/openslam_gmapping への PR にするか、こちらでパッチを当てるかをそのときに相談する。
 - **スキャンとオドメトリの時刻合わせ**: 別のトピックで受けるので少しずれる。シミュレータでは問題ない見込みだが、結合テストで地図がぶれるなら mobile_sim に組で返すプロセスを足す。
 - **処理時間**: 粒子数を増やすと `processScan` が重くなる。トピックの購読側で詰まらないか M2 で測り、必要なら別スレッドにする。
