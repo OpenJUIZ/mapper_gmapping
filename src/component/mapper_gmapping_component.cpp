@@ -227,6 +227,12 @@ public:
                      {"last_error", Value(last_error_)}};
     }
 
+    // プロセスの関数から漏れた例外を覚える (gmapping_get_state の last_error で見える)
+    void record_error(const std::string& what) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        last_error_ = what;
+    }
+
 private:
     // 地図は重いので、更新があって前回から map_update_interval 秒たったときだけ作り直す
     void refresh_map(bool force) {
@@ -253,6 +259,20 @@ private:
     std::chrono::steady_clock::time_point map_built_at_{};
 };
 
+// juiz_sdk 0.1.0 のプロセスの入口は juiz の Value の例外しか捕まえないので、それ以外の例外が C ABI を越えると
+// juiz ごと落ちる (書けないパスへの save_map など)。ここで捕まえて覚え、nullopt (juiz ではエラー) を返す
+template <typename F>
+auto guarded(GMappingContainer* c, F&& f) -> decltype(f()) {
+    try {
+        return f();
+    } catch (const std::exception& e) {
+        c->record_error(e.what());
+    } catch (...) {
+        c->record_error("unknown error");
+    }
+    return std::nullopt;
+}
+
 static auto gmapping_manif = ContainerManifest("gmapping");
 GMappingContainer* gmapping(juiz::CapsuleMap args) {
     double map_update_interval = 2.0;
@@ -264,37 +284,51 @@ COMPONENT_CONTAINER_FACTORY(gmapping_manif, gmapping);
 static auto gmapping_set_odometry_manif =
     ProcessManifest("gmapping_set_odometry").add_typed_arg<Pose2DStamped>("odom", "odometry pose");
 std::optional<bool> gmapping_set_odometry(GMappingContainer* c, const Pose2DStamped& odom) {
-    return c->set_odometry(odom);
+    return guarded(c, [&]() -> std::optional<bool> { return c->set_odometry(odom); });
 }
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_set_odometry_manif, gmapping_set_odometry);
 
 static auto gmapping_add_scan_manif = ProcessManifest("gmapping_add_scan").add_typed_arg<LaserScan>("scan", "laser scan");
-std::optional<bool> gmapping_add_scan(GMappingContainer* c, const LaserScan& scan) { return c->add_scan(scan); }
+std::optional<bool> gmapping_add_scan(GMappingContainer* c, const LaserScan& scan) {
+    return guarded(c, [&]() -> std::optional<bool> { return c->add_scan(scan); });
+}
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_add_scan_manif, gmapping_add_scan);
 
 static auto gmapping_get_pose_manif = ProcessManifest("gmapping_get_pose").returns<Pose2DStamped>();
-std::optional<Pose2DStamped> gmapping_get_pose(GMappingContainer* c) { return c->pose(); }
+std::optional<Pose2DStamped> gmapping_get_pose(GMappingContainer* c) {
+    return guarded(c, [&]() -> std::optional<Pose2DStamped> { return c->pose(); });
+}
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_get_pose_manif, gmapping_get_pose);
 
 static auto gmapping_get_map_manif = ProcessManifest("gmapping_get_map");
-std::optional<juiz::Image> gmapping_get_map(GMappingContainer* c) { return c->map_image(); }
+std::optional<juiz::Image> gmapping_get_map(GMappingContainer* c) {
+    return guarded(c, [&]() -> std::optional<juiz::Image> { return c->map_image(); });
+}
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_get_map_manif, gmapping_get_map);
 
 static auto gmapping_get_map_info_manif = ProcessManifest("gmapping_get_map_info");
-std::optional<juiz::Value> gmapping_get_map_info(GMappingContainer* c) { return c->map_info(); }
+std::optional<juiz::Value> gmapping_get_map_info(GMappingContainer* c) {
+    return guarded(c, [&]() -> std::optional<juiz::Value> { return c->map_info(); });
+}
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_get_map_info_manif, gmapping_get_map_info);
 
 static auto gmapping_save_map_manif =
     ProcessManifest("gmapping_save_map").add_string_arg("path", "writes <path>.yaml and <path>.png", "map");
-std::optional<std::string> gmapping_save_map(GMappingContainer* c, const std::string& path) { return c->save_map(path); }
+std::optional<std::string> gmapping_save_map(GMappingContainer* c, const std::string& path) {
+    return guarded(c, [&]() -> std::optional<std::string> { return c->save_map(path); });
+}
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_save_map_manif, gmapping_save_map);
 
 static auto gmapping_reset_manif = ProcessManifest("gmapping_reset");
-std::optional<bool> gmapping_reset(GMappingContainer* c) { return c->reset(); }
+std::optional<bool> gmapping_reset(GMappingContainer* c) {
+    return guarded(c, [&]() -> std::optional<bool> { return c->reset(); });
+}
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_reset_manif, gmapping_reset);
 
 static auto gmapping_get_state_manif = ProcessManifest("gmapping_get_state");
-std::optional<juiz::Value> gmapping_get_state(GMappingContainer* c) { return c->state(); }
+std::optional<juiz::Value> gmapping_get_state(GMappingContainer* c) {
+    return guarded(c, [&]() -> std::optional<juiz::Value> { return c->state(); });
+}
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_get_state_manif, gmapping_get_state);
 
 static auto mapper_gmapping_version_manif = ProcessManifest("mapper_gmapping_version");

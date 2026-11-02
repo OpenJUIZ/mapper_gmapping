@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -212,8 +213,18 @@ def run(sim, base, args):
     img = Image.open(io.BytesIO(png)).convert("L")
     check(img.size == (info["width"], info["height"]), f"map size {img.size} matches map info")
 
-    out = args.out or Path(tempfile.mkdtemp())
+    # mapper はカレントディレクトリが app/ なので、絶対パスで渡す
+    out = (args.out or Path(tempfile.mkdtemp())).resolve()
     out.mkdir(parents=True, exist_ok=True)
+    # 書けないパスはエラーになるが、mapper は落ちない
+    try:
+        mapper_call(base, "save_map0", "save_map", {"path": str(out / "no" / "such" / "dir" / "map")})
+        bad = None
+    except urllib.error.HTTPError as e:
+        bad = e.code
+    check(bad is not None, f"save_map to a missing directory is an error (HTTP {bad})")
+    st = mapper_call(base, "get_state0", "get_state")
+    check("cannot write" in st["last_error"], f"mapper survives and reports it ({st['last_error']!r})")
     yaml = mapper_call(base, "save_map0", "save_map", {"path": str(out / "map")})
     check(Path(yaml).exists() and (out / "map.png").exists(), f"save_map writes {yaml}")
     compare_maps(sim, read_png(out / "map.png"), info)
