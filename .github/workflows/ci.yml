@@ -13,7 +13,7 @@ concurrency:
 env:
   JUIZ_VERSION: "0.1.0"
   # 結合テストで動かす mobile_sim(odom と scan をトピックに出す 0.2.0 以降)
-  MOBILE_SIM_REF: claude/project-thread-vp2kty
+  MOBILE_SIM_REF: main
 
 jobs:
   build:
