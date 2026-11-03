@@ -107,6 +107,7 @@ mapper の HTTP ブローカー(8001)で `web/` を配信する。地図(数秒�
 4. **M3 ブラウザ画面**: 地図・姿勢・粒子の表示と、地図の保存ボタン。Playwright で確かめる。
    - できたもの: 真の姿勢とオドメトリの重ね描きと誤差、推定位置から描いたスキャン、mobile_sim の操作も同じ画面に入れた。mobile_sim は mapper の subsystem なので、mapper の HTTP から `ipc://mobile_sim/...` の識別子で呼べ、CORS の設定は要らない。
 5. **M4 juizapp 化と配布**: 5 ターゲットのビルド、`juiz pack`、`juiz run` での結合テスト、Releases への添付(mobile_sim と同じく GitHub の画面で Release を作る運用)。
+   - conf の subsystem に `package: mobile_sim` を書き、`juiz run` が depends の確認に使うようにした(`juiz -f` でもそのまま動く)。GMapping の LICENSE(BSD-3-Clause)をパッケージに入れる。
 6. **M5 Docker**: mobile_sim と mapper を一緒に動かす compose.yml と、ghcr.io への公開。
 
 その後に、保存した地図で自己位置推定(AMCL 相当)、実機の基礎パッケージとのつなぎ方、ループの閉じ方の調整などを考える。
