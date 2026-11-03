@@ -197,7 +197,12 @@ def read_png(path):
 
 
 def run(sim, base, args):
-    st = mapper_call(base, "get_state0", "get_state")
+    # 購読がつながるまで少し待つ(起動直後はまだトピックが来ていないことがある)
+    for _ in range(50):
+        st = mapper_call(base, "get_state0", "get_state")
+        if st["scans"] > 0:
+            break
+        time.sleep(0.2)
     check(st["scans"] > 0, f"mapper receives scans over the topic ({st['scans']} scans)")
     check(st["initialized"], "mapper initializes on the first scan")
 
