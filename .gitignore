@@ -8,3 +8,4 @@
 /core_test_map.*
 app/.*.conf
 /node_modules/
+/docker/maps/

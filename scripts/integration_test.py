@@ -11,6 +11,9 @@ mobile_sim をトピック cmd_vel で部屋の中を一周させ、mapper_gmapp
     mobile_sim を juiz run で動かす(ポートは 8000)
   python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-0.2.0.juizapp --juizapp dist/mapper_gmapping-0.1.0.juizapp
     両方をパッケージで動かす(mapper のポートは 8001)
+  python3 scripts/integration_test.py --sim-url http://localhost:8000 --mapper-url http://localhost:8001 \
+      --out maps --mapper-out /maps
+    もう動いている mobile_sim と mapper を試す(docker compose など)。--mapper-out は mapper から見た --out のパス
 
 IPC の名前 mobile_sim と mapper_gmapping を使うので、同じ機械でそれらを動かしていないこと。
 """
@@ -47,12 +50,24 @@ def main():
     ap.add_argument("--sim-port", type=int, default=18000)
     ap.add_argument("--port", type=int, default=18001)
     ap.add_argument("--speed", type=float, default=0.5)
+    ap.add_argument("--sim-url", help="もう動いている mobile_sim(--mapper-url と一緒に使う)")
+    ap.add_argument("--mapper-url", help="もう動いている mapper_gmapping")
     ap.add_argument("--out", type=Path, help="地図(YAML + PNG)を書くディレクトリ")
+    ap.add_argument("--mapper-out", help="mapper から見た --out のパス(コンテナの中など。既定は --out と同じ)")
     ap.add_argument("--ui", type=Path, metavar="SCREENSHOT",
                     help="続けてブラウザ画面のテスト (scripts/ui_test.js、Playwright が要る) を走らせ、画面を保存する")
     args = ap.parse_args()
+    if args.sim_url or args.mapper_url:
+        if not (args.sim_url and args.mapper_url):
+            sys.exit("give both --sim-url and --mapper-url")
+        sim, base = args.sim_url.rstrip("/"), args.mapper_url.rstrip("/")
+        for url in (sim, base):
+            wait_ready(url, None)
+        run(sim, base, args)
+        print("OK")
+        return
     if not args.mobile_sim and not args.mobile_sim_juizapp:
-        sys.exit("give --mobile-sim or --mobile-sim-juizapp")
+        sys.exit("give --mobile-sim or --mobile-sim-juizapp (or --sim-url and --mapper-url)")
 
     procs = []
     tmps = []
@@ -112,7 +127,7 @@ def start(cmd, cwd, env=None):
 
 def wait_ready(base, proc):
     for _ in range(150):
-        if proc.poll() is not None:
+        if proc is not None and proc.poll() is not None:
             proc.log.seek(0)
             sys.exit(f"juiz exited ({base}):\n" + proc.log.read().decode(errors="replace")[-4000:])
         try:
@@ -236,17 +251,19 @@ def run(sim, base, args):
     # mapper はカレントディレクトリが app/ なので、絶対パスで渡す
     out = (args.out or Path(tempfile.mkdtemp())).resolve()
     out.mkdir(parents=True, exist_ok=True)
+    # mapper から見たパス(コンテナの中で動かすときは違う)。地図を確かめるのは手元の out で
+    mout = Path(args.mapper_out) if args.mapper_out else out
     # 書けないパスはエラーになるが、mapper は落ちない
     try:
-        mapper_call(base, "save_map0", "save_map", {"path": str(out / "no" / "such" / "dir" / "map")})
+        mapper_call(base, "save_map0", "save_map", {"path": str(mout / "no" / "such" / "dir" / "map")})
         bad = None
     except urllib.error.HTTPError as e:
         bad = e.code
     check(bad is not None, f"save_map to a missing directory is an error (HTTP {bad})")
     st = mapper_call(base, "get_state0", "get_state")
     check("cannot write" in st["last_error"], f"mapper survives and reports it ({st['last_error']!r})")
-    yaml = mapper_call(base, "save_map0", "save_map", {"path": str(out / "map")})
-    check(Path(yaml).exists() and (out / "map.png").exists(), f"save_map writes {yaml}")
+    yaml = mapper_call(base, "save_map0", "save_map", {"path": str(mout / "map")})
+    check((out / "map.yaml").exists() and (out / "map.png").exists(), f"save_map writes {yaml}")
     compare_maps(sim, read_png(out / "map.png"), info)
 
 

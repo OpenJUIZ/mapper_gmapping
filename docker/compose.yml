@@ -1,0 +1,25 @@
+# mobile_sim と mapper_gmapping を一緒に動かす
+#   docker compose -f docker/compose.yml up
+# ブラウザで http://localhost:8001/ (地図づくり) と http://localhost:8000/ (シミュレータ) を開く
+services:
+  mobile_sim:
+    # mapper_gmapping 0.1 は mobile_sim 0.2 で動く
+    image: ghcr.io/openjuiz/mobile_sim:0.2.0
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+  mapper_gmapping:
+    image: ghcr.io/openjuiz/mapper_gmapping:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      - mobile_sim
+    environment:
+      MOBILE_SIM_URL: http://mobile_sim:8000
+    ports:
+      - "8001:8001"
+    # 画面の「保存」で書いた地図(既定の名前 map なら maps/map.yaml と maps/map.png)
+    volumes:
+      - ./maps:/maps
+    restart: unless-stopped
