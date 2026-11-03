@@ -45,6 +45,10 @@ function check(cond, msg) {
   const truth = await pose("#s_truth");
   check(Math.hypot(p1.x - p0.x, p1.y - p0.y) > 0.5, `driving moves the estimated pose (${JSON.stringify(p1)})`);
   check(Math.hypot(p1.x - truth.x, p1.y - truth.y) < 0.2, `estimate is near the truth (${JSON.stringify(truth)})`);
+  const frame = await page.textContent("#s_frame");
+  check(frame.includes("map → mapper0") && frame.includes("ContainerPose"), `estimate is read from the ContainerPose (${frame})`);
+  const mount = await page.textContent("#s_mount");
+  check(/^x -?[\d.]+/.test(mount), `shows the LiDAR mount from lidar_mount (${mount})`);
   const mapText = await page.textContent("#s_map");
   check(!mapText.includes("まだ"), `map is shown (${mapText})`);
 

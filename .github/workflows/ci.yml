@@ -12,9 +12,8 @@ concurrency:
 
 env:
   JUIZ_VERSION: "0.2.0"
-  # 結合テストで動かす mobile_sim(odom と scan をトピックに出す 0.2.0 以降)
-  # mobile_sim#23 (Transformations、0.3.0) がマージされたら main に戻す
-  MOBILE_SIM_REF: claude/project-thread-ur68ns
+  # 結合テストで動かす mobile_sim(Transformations と lidar_mount を持つ 0.3.0 以降)
+  MOBILE_SIM_REF: main
 
 jobs:
   build:

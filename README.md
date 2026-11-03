@@ -118,7 +118,7 @@ GMapping の引数(`particles`、`delta`、`xmin` など slam_gmapping と同じ
 
 juiz 0.2.0 の Transformations を使い、推定した姿勢を `mapper0` の ContainerPose として持たせています(計画は [mobile_sim の docs/transformations-plan.md](https://github.com/OpenJUIZ/mobile_sim/blob/main/docs/transformations-plan.md))。
 
-- `app/app.conf` に Anchor `map`(SLAM の地図の座標系)と Transform `map -> mapper0` があり、`mapper0` はスキャンのたびに推定した姿勢を書きます。`juiz container pose mapper0 --reference map -s http://localhost:8001` や管理画面の木で見られます。基準はコンテナの引数 `map_frame`(既定 `map`、空なら書かない)で変えられます。
+- `app/app.conf` に Anchor `map`(SLAM の地図の座標系)と Transform `map -> mapper0` があり、`mapper0` はスキャンのたびに推定した姿勢を書きます。`juiz container pose mapper0 --reference map -s http://localhost:8001` や管理画面の木で見られます。基準はコンテナの引数 `map_frame`(既定 `map`、空なら書かない)で変えられます。画面の推定位置もこの ContainerPose から読み、状態の欄に「座標系」(書けないときはその理由)と、`lidar_mount` から受け取った「LiDAR の取付位置」を出します。
 - LiDAR の取付位置は mobile_sim の Transform `robot0 -> lidar0` が持ち、トピック `lidar_mount` で届きます。`wait_laser_pose: true` のときは、届くまでスキャンを使いません。
 - mobile_sim とは別の System なので、今はトピックでつないでいます。juiz にシステムをまたぐ Transform(juiz#376)が入ったら、`map -> odom0 -> robot0 -> lidar0` を 1 本の木にする予定です。
 
