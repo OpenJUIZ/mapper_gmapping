@@ -2,7 +2,7 @@
 
 [GMapping](https://github.com/OpenJUIZ/openslam_gmapping) を使って、LiDAR のスキャンとオドメトリから地図と自己位置を推定する [JUIZ](https://github.com/OpenJUIZ/juiz) のアプリです。`.juizapp` として配布し、[mobile_sim](https://github.com/OpenJUIZ/mobile_sim) と組み合わせて使います。
 
-> 状態: 開発中です(M2 juiz のコンポーネントと mobile_sim との連携まで)。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
+> 状態: 開発中です(M3 ブラウザ画面まで)。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
 
 ## 構成
 
@@ -69,7 +69,7 @@ cd app && juiz -f app.conf -d --ipc mobile_sim
 cd app && juiz -f app.conf -d
 ```
 
-mobile_sim の画面(http://localhost:8000/)でロボットを動かすと、地図が育ちます。`curl` などで呼べる主な ContainerProcess(コンテナ `gmapping`、インスタンス `mapper0`):
+http://localhost:8001/ を開くと、育っていく地図、推定した姿勢と軌跡、粒子を見られます。mobile_sim につながっていれば、真の姿勢とオドメトリだけの姿勢を重ねて誤差を出し、WASD・矢印キー・パッドでロボットを動かせます(mobile_sim の処理は mapper の HTTP から `ipc://mobile_sim/...` で呼ぶので、mobile_sim 側の設定は要りません)。地図の保存(`save_map`)、PNG のダウンロード、作り直しのボタンもあります。画面は `app/web/` にあります。`curl` などで呼べる主な ContainerProcess(コンテナ `gmapping`、インスタンス `mapper0`):
 
 | ContainerProcess | 引数 | 戻り値 |
 | --- | --- | --- |
@@ -88,6 +88,8 @@ GMapping の引数(`particles`、`delta`、`xmin` など slam_gmapping と同じ
 
 ```sh
 python3 scripts/integration_test.py --mobile-sim ../mobile_sim
+# 続けてブラウザ画面も Playwright で確かめる(npm install playwright が要る)
+python3 scripts/integration_test.py --mobile-sim ../mobile_sim --ui ui_test.png
 ```
 
 ## ライセンス

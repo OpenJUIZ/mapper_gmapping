@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mapper_gmapping</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>mapper_gmapping</h1>
+    <span id="connection" class="status">接続中…</span>
+    <span id="sim_connection" class="status"></span>
+  </header>
+  <main>
+    <section id="view">
+      <canvas id="map" width="640" height="640" aria-label="作った地図と推定した姿勢"></canvas>
+      <p class="hint" id="legend">
+        <span class="key est"></span>推定した姿勢と軌跡
+        <span class="key particle"></span>粒子
+        <span class="key truth"></span>真の姿勢(mobile_sim)
+        <span class="key odom"></span>オドメトリだけ
+      </p>
+    </section>
+    <aside>
+      <h2>地図</h2>
+      <label>保存先 <input id="save_path" type="text" value="map" size="16"></label>
+      <p class="hint">mapper のカレントディレクトリからの相対パス。&lt;パス&gt;.yaml と .png を書く</p>
+      <button id="save" type="button">地図を保存</button>
+      <button id="download" type="button">PNG をダウンロード</button>
+      <button id="reset" type="button">地図を捨てて最初から</button>
+      <p id="message" class="hint" role="status"></p>
+      <label><input id="show_particles" type="checkbox" checked> 粒子を描く</label>
+      <label><input id="show_scan" type="checkbox" checked> スキャンを推定位置から描く</label>
+      <label><input id="show_truth" type="checkbox" checked> 真の姿勢を描く</label>
+      <label><input id="show_odom" type="checkbox" checked> オドメトリを描く</label>
+      <label><input id="fit" type="checkbox" checked> 地図のある所に寄せる</label>
+      <section id="drive" hidden>
+        <h2>操作(mobile_sim)</h2>
+        <canvas id="pad" width="160" height="160" aria-label="速度パッド"></canvas>
+        <p class="hint">WASD / 矢印キー、またはパッドをドラッグ</p>
+        <label>最大速度 <input id="max_v" type="number" step="0.1" min="0.1" value="0.5"> m/s</label>
+        <label>最大角速度 <input id="max_w" type="number" step="0.1" min="0.1" value="1.0"> rad/s</label>
+      </section>
+      <h2>状態</h2>
+      <dl id="state">
+        <dt>推定位置</dt><dd id="s_pose">-</dd>
+        <dt>真の位置</dt><dd id="s_truth">-</dd>
+        <dt>誤差</dt><dd id="s_err">-</dd>
+        <dt>オドメトリの誤差</dt><dd id="s_odom_err">-</dd>
+        <dt>更新</dt><dd id="s_updates">-</dd>
+        <dt>スキャン</dt><dd id="s_scans">-</dd>
+        <dt>地図</dt><dd id="s_map">-</dd>
+        <dt>エラー</dt><dd id="s_error">-</dd>
+      </dl>
+    </aside>
+  </main>
+  <script src="mapper_gmapping.js"></script>
+</body>
+</html>
