@@ -281,4 +281,16 @@ int Mapper::updates() const { return impl_->updates; }
 const Params& Mapper::params() const { return impl_->params; }
 void Mapper::reset() { impl_->destroy(); }
 
+bool Mapper::set_laser_pose(const Pose2D& laser_pose) {
+    const Pose2D& cur = impl_->params.laser_pose;
+    const double eps = 1e-9;
+    if (std::abs(cur.x - laser_pose.x) < eps && std::abs(cur.y - laser_pose.y) < eps &&
+        std::abs(std::remainder(cur.theta - laser_pose.theta, 2.0 * M_PI)) < eps) {
+        return false;
+    }
+    impl_->params.laser_pose = laser_pose;
+    impl_->destroy();
+    return true;
+}
+
 }  // namespace mapper_gmapping

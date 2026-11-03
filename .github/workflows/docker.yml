@@ -16,6 +16,10 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/openjuiz/mapper_gmapping
+  # 結合テストでつなぐ mobile_sim。この ref からイメージをビルドして compose に渡す
+  # mobile_sim#23 (Transformations、0.3.0) がマージされたら main に戻す
+  MOBILE_SIM_REF: claude/project-thread-ur68ns
+  MOBILE_SIM_IMAGE: mobile_sim:ci
 
 jobs:
   build:
@@ -45,6 +49,11 @@ jobs:
           tags: ${{ env.IMAGE }}:latest
           cache-from: type=gha,scope=${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+      - name: Build mobile_sim
+        # lidar_mount と Transformations を持つ mobile_sim (0.3.0 以降) が要る
+        run: |
+          git clone --depth 1 --branch "$MOBILE_SIM_REF" https://github.com/OpenJUIZ/mobile_sim.git ../mobile_sim
+          docker build -f ../mobile_sim/docker/Dockerfile -t "$MOBILE_SIM_IMAGE" ../mobile_sim
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

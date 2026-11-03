@@ -7,9 +7,9 @@ mobile_sim をトピック cmd_vel で部屋の中を一周させ、mapper_gmapp
   scripts/dev_plugin.sh build
   python3 scripts/integration_test.py --mobile-sim <mobile_sim のリポジトリ> [--juiz <juiz のパス>]
     mobile_sim は app/plugins/<target>/ にプラグインを置いておく(mobile_sim の scripts/dev_plugin.sh)
-  python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-0.2.0.juizapp
+  python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-0.3.0.juizapp
     mobile_sim を juiz run で動かす(ポートは 8000)
-  python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-0.2.0.juizapp --juizapp dist/mapper_gmapping-0.1.0.juizapp
+  python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-0.3.0.juizapp --juizapp dist/mapper_gmapping-0.2.0.juizapp
     両方をパッケージで動かす(mapper のポートは 8001)
   python3 scripts/integration_test.py --sim-url http://localhost:8000 --mapper-url http://localhost:8001 \
       --out maps --mapper-out /maps
@@ -159,6 +159,38 @@ def mapper_call(base, name, kind, args=None, raw=False):
     return call(base, name, f"gmapping_{kind}", "mapper0", args, raw)
 
 
+def api(base, path, query=None, body=None, method="GET"):
+    url = f"{base}/api/{path}"
+    if query:
+        url += "?" + urllib.parse.urlencode(query)
+    data = None if body is None else json.dumps(body).encode()
+    req = urllib.request.Request(url, data=data, method=method, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return json.loads(r.read())
+
+
+def yaw(q):
+    return math.atan2(2.0 * (q["w"] * q["z"] + q["x"] * q["y"]), 1.0 - 2.0 * (q["y"] ** 2 + q["z"] ** 2))
+
+
+# LiDAR を台車の中心から前にずらす量 [m]。mobile_sim の Transform robot0 -> lidar0 を変え、
+# mapper が lidar_mount から受け取って SLAM に使うことを確かめる
+MOUNT_X = 0.1
+
+
+def move_lidar(sim, base):
+    """mobile_sim の LiDAR の取付位置を Transform で変え、mapper が受け取るのを待つ"""
+    tid = next(t for t in api(sim, "transform/list") if "lidar0" in t)
+    api(sim, "transform/update", {"identifier": tid}, {"translation": {"x": MOUNT_X, "y": 0.0, "z": 0.2}}, method="PATCH")
+    for _ in range(50):
+        st = mapper_call(base, "get_state0", "get_state")
+        if abs(st["laser_pose"]["x"] - MOUNT_X) < 1e-9 and st["initialized"]:
+            break
+        time.sleep(0.2)
+    check(abs(st["laser_pose"]["x"] - MOUNT_X) < 1e-9, f"mapper takes the LiDAR mount from topic lidar_mount ({st['laser_pose']})")
+    check(not st["waiting_laser_pose"], "mapper is not waiting for the mount any more")
+
+
 def push_cmd_vel(sim, vx, omega):
     url = f"{sim}/api/topic/push?topic_name=cmd_vel"
     body = {"input": {"linear": {"x": vx, "y": 0.0}, "angular": omega}}
@@ -219,6 +251,7 @@ def run(sim, base, args):
             break
         time.sleep(0.2)
     check(st["scans"] > 0, f"mapper receives scans over the topic ({st['scans']} scans)")
+    move_lidar(sim, base)
     check(st["initialized"], "mapper initializes on the first scan")
 
     elapsed = drive(sim, ROUTE, args.speed)
@@ -239,6 +272,13 @@ def run(sim, base, args):
     check(abs(wrap(slam[2] - truth[2])) < 0.12, f"SLAM heading is within 0.12 rad ({wrap(slam[2] - truth[2]):.3f})")
     check(abs(slam[2]) <= math.pi + 1e-9, "SLAM heading is normalized")
     check(slam_err < odom_err, "SLAM pose is better than odometry")
+    p = api(base, "container/pose", {"identifier": "mapper0", "reference": "map"})
+    est = (p["pose"]["position"]["x"], p["pose"]["position"]["y"], yaw(p["pose"]["orientation"]))
+    check(
+        math.hypot(est[0] - slam[0], est[1] - slam[1]) < 0.05 and abs(wrap(est[2] - slam[2])) < 0.05,
+        f"ContainerPose of mapper0 from map is the SLAM pose ({fmt(est)})",
+    )
+    check(st["pose_error"] == "", f"mapper writes its ContainerPose without errors ({st['pose_error']!r})")
 
     info = mapper_call(base, "get_map_info0", "get_map_info")
     png = mapper_call(base, "get_map0", "get_map", raw=True)

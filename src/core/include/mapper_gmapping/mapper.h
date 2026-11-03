@@ -114,6 +114,9 @@ public:
     const Params& params() const;
     // 地図と粒子を捨てて、最初のスキャンを待つ状態に戻す
     void reset();
+    // ロボットに対する LiDAR の取り付け位置を変える。GMapping は初期化のときにしか読まないので、
+    // 値が変わったら reset() してやり直す。変わったら true
+    bool set_laser_pose(const Pose2D& laser_pose);
 
 private:
     struct Impl;

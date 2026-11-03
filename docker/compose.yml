@@ -3,8 +3,9 @@
 # ブラウザで http://localhost:8001/ (地図づくり) と http://localhost:8000/ (シミュレータ) を開く
 services:
   mobile_sim:
-    # mapper_gmapping 0.1 は mobile_sim 0.2 で動く
-    image: ghcr.io/openjuiz/mobile_sim:0.2.0
+    # mapper_gmapping 0.2 は mobile_sim 0.3 (Transformations とトピック lidar_mount) で動く。
+    # 別のイメージは MOBILE_SIM_IMAGE で渡す
+    image: ${MOBILE_SIM_IMAGE:-ghcr.io/openjuiz/mobile_sim:0.3.0}
     ports:
       - "8000:8000"
     restart: unless-stopped

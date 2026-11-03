@@ -6,15 +6,15 @@
 
 ## 使い方
 
-[Releases](https://github.com/OpenJUIZ/mapper_gmapping/releases) から `mapper_gmapping-<version>.juizapp` を、[mobile_sim の Releases](https://github.com/OpenJUIZ/mobile_sim/releases) から 0.2 系の `mobile_sim-<version>.juizapp` を取ってきます。
+[Releases](https://github.com/OpenJUIZ/mapper_gmapping/releases) から `mapper_gmapping-<version>.juizapp` を、[mobile_sim の Releases](https://github.com/OpenJUIZ/mobile_sim/releases) から 0.3 系の `mobile_sim-<version>.juizapp` を取ってきます。
 
 ```sh
-pip install juiz-cli==0.1.0
-juiz run mobile_sim-0.2.0.juizapp          # 先に動かしておく(ipc://mobile_sim、http://localhost:8000/)
-juiz run mapper_gmapping-0.1.0.juizapp     # 別の端末で。ブラウザで http://localhost:8001/ を開く
+pip install juiz-cli==0.2.0
+juiz run mobile_sim-<version>.juizapp      # 先に動かしておく(ipc://mobile_sim、http://localhost:8000/)
+juiz run mapper_gmapping-<version>.juizapp     # 別の端末で。ブラウザで http://localhost:8001/ を開く
 ```
 
-mapper は `juizapp.yaml` の `depends`(`mobile_sim >=0.2.0, <0.3`)を見て、動いている mobile_sim の版を確かめてからつなぎます。画面のキーかパッドでロボットを動かすと地図が育ち、「地図を保存」で ROS map_server の形式(YAML + PNG)に書き出せます。保存先の相対パスは `juiz run` を起動したディレクトリからです。
+mapper は `juizapp.yaml` の `depends`(`mobile_sim >=0.3.0, <0.4`)を見て、動いている mobile_sim の版を確かめてからつなぎます。画面のキーかパッドでロボットを動かすと地図が育ち、「地図を保存」で ROS map_server の形式(YAML + PNG)に書き出せます。保存先の相対パスは `juiz run` を起動したディレクトリからです。
 
 対応するターゲット: Linux(x86_64、aarch64)、macOS(Apple シリコン、Intel)、Windows(x86_64)。
 
@@ -51,14 +51,14 @@ CMake 3.16 以降と C++17 のコンパイラが要ります。
 ```sh
 git clone --recursive https://github.com/OpenJUIZ/mapper_gmapping
 cd mapper_gmapping
-sdk="$(scripts/fetch_juiz_sdk.sh 0.1.0)"   # juiz の Releases から juiz_sdk を取って .juiz_sdk/ に展開する
+sdk="$(scripts/fetch_juiz_sdk.sh 0.2.0)"   # juiz の Releases から juiz_sdk を取って .juiz_sdk/ に展開する
 cmake -B build -DCMAKE_PREFIX_PATH="$sdk"
 cmake --build build
 ctest --test-dir build
 ```
 
-- juiz_sdk の版は、使う juiz の版と完全に一致させます(既定は 0.1.0)。
-- C++ のプラグインは C ABI なので、Rust のプラグインと違って juiz をビルドした rustc を揃える必要はありません。`pip install juiz-cli==0.1.0` の juiz で読めます。
+- juiz_sdk の版は、使う juiz の版と完全に一致させます(既定は 0.2.0)。
+- C++ のプラグインは C ABI なので、Rust のプラグインと違って juiz をビルドした rustc を揃える必要はありません。`pip install juiz-cli==0.2.0` の juiz で読めます。
 - juiz_sdk が無いときは `-DMAPPER_GMAPPING_BUILD_COMPONENT=OFF` で `src/core` とテストだけをビルドできます。
 
 ### SLAM 本体(`src/core`)
@@ -82,14 +82,14 @@ mapper_gmapping::save_map(grid, "maps/room");    // maps/room.yaml と maps/room
 ### juiz で動かす
 
 ```sh
-pip install juiz-cli==0.1.0
+pip install juiz-cli==0.2.0
 scripts/dev_plugin.sh          # プラグインと libjuiz_sdk を app/plugins/<target>/ に置く
 python3 scripts/smoke_test.py  # juiz を起動して、HTTP からプロセスを呼ぶ
 ```
 
 ### mobile_sim と動かす
 
-mobile_sim(0.2.0 以降)はトピック `odom`(`Pose2DStamped`)と `scan`(`LaserScan`)を出します。`app/app.conf` は IPC で `mobile_sim` につなぎ、この 2 つを購読して地図を作ります。
+mobile_sim(0.3.0 以降)はトピック `odom`(`Pose2DStamped`)、`scan`(`LaserScan`)、`lidar_mount`(`PoseStamped`、ロボットから見た LiDAR の取付位置)を出します。`app/app.conf` は IPC で `mobile_sim` につなぎ、この 3 つを購読して地図を作ります。
 
 ```sh
 # mobile_sim のリポジトリで(scripts/dev_plugin.sh の後)
@@ -104,6 +104,7 @@ http://localhost:8001/ を開くと、育っていく地図、推定した姿勢
 | --- | --- | --- |
 | `gmapping_set_odometry` | `odom: Pose2DStamped` | なし。トピック `odom` を購読 |
 | `gmapping_add_scan` | `scan: LaserScan` | 地図を更新したか。トピック `scan` を購読(オドメトリが来る前のスキャンは捨てる) |
+| `gmapping_set_laser_pose` | `mount: PoseStamped` | 取付位置が変わったか。トピック `lidar_mount` を購読(変わったら地図を作り直す) |
 | `gmapping_get_pose` | なし | `Pose2DStamped`(frame `map`) |
 | `gmapping_get_map` | なし | 地図の画像(L8。占有 0、空き 254、不明 205) |
 | `gmapping_get_map_info` | なし | `{resolution, origin, width, height, updates, ...}` |
@@ -111,7 +112,15 @@ http://localhost:8001/ を開くと、育っていく地図、推定した姿勢
 | `gmapping_reset` | なし | なし(地図を捨てて最初から) |
 | `gmapping_get_state` | なし | 粒子、軌跡、オドメトリ、`map_to_odom` など(画面用) |
 
-GMapping の引数(`particles`、`delta`、`xmin` など slam_gmapping と同じ名前)と `laser_pose`、`map_update_interval` はコンテナの引数で変えられます。
+GMapping の引数(`particles`、`delta`、`xmin` など slam_gmapping と同じ名前)と `laser_pose`(トピック `lidar_mount` が来るまでの取付位置)、`map_update_interval` はコンテナの引数で変えられます。
+
+#### 座標系(Transformations)
+
+juiz 0.2.0 の Transformations を使い、推定した姿勢を `mapper0` の ContainerPose として持たせています(計画は [mobile_sim の docs/transformations-plan.md](https://github.com/OpenJUIZ/mobile_sim/blob/main/docs/transformations-plan.md))。
+
+- `app/app.conf` に Anchor `map`(SLAM の地図の座標系)と Transform `map -> mapper0` があり、`mapper0` はスキャンのたびに推定した姿勢を書きます。`juiz container pose mapper0 --reference map -s http://localhost:8001` や管理画面の木で見られます。基準はコンテナの引数 `map_frame`(既定 `map`、空なら書かない)で変えられます。
+- LiDAR の取付位置は mobile_sim の Transform `robot0 -> lidar0` が持ち、トピック `lidar_mount` で届きます。`wait_laser_pose: true` のときは、届くまでスキャンを使いません。
+- mobile_sim とは別の System なので、今はトピックでつないでいます。juiz にシステムをまたぐ Transform(juiz#376)が入ったら、`map -> odom0 -> robot0 -> lidar0` を 1 本の木にする予定です。
 
 結合テストは mobile_sim を部屋で一周させ、SLAM の姿勢と地図を真の値と比べます(手元では 115 秒走って誤差 0.011 m、オドメトリだけだと 0.69 m、占有セルの 96% が真の壁の 0.1 m 以内)。
 
@@ -126,7 +135,7 @@ python3 scripts/integration_test.py --mobile-sim ../mobile_sim --ui ui_test.png
 ```sh
 scripts/dev_plugin.sh                  # この機械のプラグインを app/plugins/<target>/ に置く
 scripts/pack.sh app/plugins dist       # dist/mapper_gmapping-<version>.juizapp
-python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-0.2.0.juizapp --juizapp dist/mapper_gmapping-0.1.0.juizapp
+python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-<version>.juizapp --juizapp dist/mapper_gmapping-<version>.juizapp
 ```
 
 動いている mobile_sim と mapper(`docker compose` など)にも同じテストを当てられます(`--mapper-out` は mapper から見た `--out` のパス)。

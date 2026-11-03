@@ -32,7 +32,7 @@ template<> struct type_traits<::juiz_std::common::Time> {
             "\"int\"}],\"name\":\"Time\",\"namespace\":\"juiz_std.common\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::common::Time& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("sec", type_traits<int64_t>::to_value(v.sec));
@@ -74,7 +74,7 @@ template<> struct type_traits<::juiz_std::common::Duration> {
             "\":\"juiz_std.common\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::common::Duration& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("sec", type_traits<int64_t>::to_value(v.sec));
@@ -117,7 +117,7 @@ template<> struct type_traits<::juiz_std::common::Header> {
             "\"record\"}},{\"default\":\"\",\"doc\":\"\345\272\247\346\250\231\347\263\273\343\201\256\345\220\215\345\211\215\",\"name\":\"frame_id\",\"type\":\"string\"}],\"name\":\"Header\",\"namespace\":\"juiz_std.common\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::common::Header& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("stamp", type_traits<::juiz_std::common::Time>::to_value(v.stamp));

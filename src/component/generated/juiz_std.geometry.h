@@ -30,7 +30,7 @@ template<> struct type_traits<::juiz_std::geometry::Point2D> {
             "{\"doc\":\"\345\271\263\351\235\242\344\270\212\343\201\256\347\202\271\",\"fields\":[{\"default\":0.0,\"name\":\"x\",\"type\":\"double\"},{\"default\":0.0,\"name\":\"y\",\"type\":\"double\"}],\"name\":\"Point2D\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Point2D& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("x", type_traits<double>::to_value(v.x));
@@ -71,7 +71,7 @@ template<> struct type_traits<::juiz_std::geometry::Point3D> {
             ".geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Point3D& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("x", type_traits<double>::to_value(v.x));
@@ -112,7 +112,7 @@ template<> struct type_traits<::juiz_std::geometry::Vector2> {
             "{\"doc\":\"\345\271\263\351\235\242\344\270\212\343\201\256\343\203\231\343\202\257\343\203\210\343\203\253\",\"fields\":[{\"default\":0.0,\"name\":\"x\",\"type\":\"double\"},{\"default\":0.0,\"name\":\"y\",\"type\":\"double\"}],\"name\":\"Vector2\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Vector2& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("x", type_traits<double>::to_value(v.x));
@@ -153,7 +153,7 @@ template<> struct type_traits<::juiz_std::geometry::Vector3> {
             "\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Vector3& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("x", type_traits<double>::to_value(v.x));
@@ -197,7 +197,7 @@ template<> struct type_traits<::juiz_std::geometry::Quaternion> {
             "{\"default\":1.0,\"name\":\"w\",\"type\":\"double\"}],\"name\":\"Quaternion\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Quaternion& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("x", type_traits<double>::to_value(v.x));
@@ -243,7 +243,7 @@ template<> struct type_traits<::juiz_std::geometry::Pose2D> {
             "ype\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Pose2D& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("position", type_traits<::juiz_std::geometry::Point2D>::to_value(v.position));
@@ -285,7 +285,7 @@ template<> struct type_traits<::juiz_std::geometry::Pose> {
             "\"default\":1.0,\"name\":\"w\",\"type\":\"double\"}],\"name\":\"Quaternion\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}}],\"name\":\"Pose\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Pose& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("position", type_traits<::juiz_std::geometry::Point3D>::to_value(v.position));
@@ -328,7 +328,7 @@ template<> struct type_traits<::juiz_std::geometry::Twist2D> {
             "namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Twist2D& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("linear", type_traits<::juiz_std::geometry::Vector2>::to_value(v.linear));
@@ -371,7 +371,7 @@ template<> struct type_traits<::juiz_std::geometry::Twist> {
             "\350\273\242 (\345\220\204\350\273\270\343\201\276\343\202\217\343\202\212) [rad/s]\",\"name\":\"angular\",\"type\":\"juiz_std.geometry.Vector3\"}],\"name\":\"Twist\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Twist& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("linear", type_traits<::juiz_std::geometry::Vector3>::to_value(v.linear));
@@ -416,7 +416,7 @@ template<> struct type_traits<::juiz_std::geometry::Pose2DStamped> {
             "e2DStamped\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::Pose2DStamped& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("header", type_traits<::juiz_std::common::Header>::to_value(v.header));
@@ -463,7 +463,7 @@ template<> struct type_traits<::juiz_std::geometry::PoseStamped> {
             "PoseStamped\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::geometry::PoseStamped& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("header", type_traits<::juiz_std::common::Header>::to_value(v.header));
@@ -477,6 +477,103 @@ template<> struct type_traits<::juiz_std::geometry::PoseStamped> {
         const auto& o = v.objectValue();
         if (auto it = o.find("header"); it != o.end()) out.header = type_traits<::juiz_std::common::Header>::from_value(it->second);
         if (auto it = o.find("pose"); it != o.end()) out.pose = type_traits<::juiz_std::geometry::Pose>::from_value(it->second);
+        return out;
+    }
+};
+}
+
+namespace juiz_std::geometry {
+// 座標変換 (ROS 2 の geometry_msgs/Transform と同じ形)。
+// 子の座標を親の座標へ写す: p_親 = rotation · p_子 + translation (docs/spec/transformations.md)
+struct Transform {
+    ::juiz_std::geometry::Vector3 translation{juiz::type_traits<::juiz_std::geometry::Vector3>::from_value(juiz::Value(std::map<std::string, juiz::Value>{{"x", juiz::Value(0.0)}, {"y", juiz::Value(0.0)}, {"z", juiz::Value(0.0)}}))};
+    ::juiz_std::geometry::Quaternion rotation{juiz::type_traits<::juiz_std::geometry::Quaternion>::from_value(juiz::Value(std::map<std::string, juiz::Value>{{"w", juiz::Value(1.0)}, {"x", juiz::Value(0.0)}, {"y", juiz::Value(0.0)}, {"z", juiz::Value(0.0)}}))};
+
+    bool operator==(const Transform& o) const { return translation == o.translation && rotation == o.rotation; }
+    bool operator!=(const Transform& o) const { return !(*this == o); }
+};
+}
+
+namespace juiz {
+template<> struct type_traits<::juiz_std::geometry::Transform> {
+    // Process の戻り値になったとき、辞書にせず C++ の値のまま渡す (遅延評価 L3)
+    static constexpr bool native = true;
+    static const TypeInfo& type_info() {
+        return local_type_info<::juiz_std::geometry::Transform>(
+            "{\"doc\":\"\345\272\247\346\250\231\345\244\211\346\217\233 (ROS 2 \343\201\256 geometry_msgs/Transform \343\201\250\345\220\214\343\201\230\345\275\242)\343\200\202\\n\345\255\220\343\201\256\345\272\247\346\250\231\343\202\222\350\246\252\343\201\256\345\272\247\346\250\231\343\201\270\345\206\231\343\201\231: p_\350\246\252 = rotation \302\267 p_\345\255\220 + translation (docs/spec/transformations.md)\",\"fields\":[{\"defa"
+            "ult\":{\"x\":0.0,\"y\":0.0,\"z\":0.0},\"name\":\"translation\",\"type\":{\"doc\":\"\347\251\272\351\226\223\343\201\256\343\203\231\343\202\257\343\203\210\343\203\253\",\"fields\":[{\"default\":0.0,\"name\":\"x\",\"type\":\"double\"},{\"default\":0.0,\"name\":\"y\",\"type\":\"double\"},{\"default\":0.0"
+            ",\"name\":\"z\",\"type\":\"double\"}],\"name\":\"Vector3\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}},{\"default\":{\"w\":1.0,\"x\":0.0,\"y\":0.0,\"z\":0.0},\"name\":\"rotation\",\"type\":{\"doc\":\"\345\233\236\350\273\242\343\202\222\350\241\250\343\201\231\345\233\233\345\205\203\346\225\260 "
+            "(\346\227\242\345\256\232\345\200\244\343\201\257\345\233\236\350\273\242\343\201\252\343\201\227)\",\"fields\":[{\"default\":0.0,\"name\":\"x\",\"type\":\"double\"},{\"default\":0.0,\"name\":\"y\",\"type\":\"double\"},{\"default\":0.0,\"name\":\"z\",\"type\":\"double\"},{\"default\":1.0,\"name\":\"w\",\"type\":"
+            "\"double\"}],\"name\":\"Quaternion\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}}],\"name\":\"Transform\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}");
+    }
+    // ABI タグ (メモリ上の形の版) に入れる、生成器の版
+    static std::string layout() { return "juiz-idl-0.2.0"; }
+    static juiz::Value to_value(const ::juiz_std::geometry::Transform& v) {
+        std::map<std::string, juiz::Value> m;
+        m.emplace("translation", type_traits<::juiz_std::geometry::Vector3>::to_value(v.translation));
+        m.emplace("rotation", type_traits<::juiz_std::geometry::Quaternion>::to_value(v.rotation));
+        return juiz::Value(std::move(m));
+    }
+    // v は型で読んだ後の値 (足りないフィールドは既定値で埋めてある、仕様 §4)
+    static ::juiz_std::geometry::Transform from_value(const juiz::Value& v) {
+        ::juiz_std::geometry::Transform out;
+        if (!v.isObjectValue()) return out;
+        const auto& o = v.objectValue();
+        if (auto it = o.find("translation"); it != o.end()) out.translation = type_traits<::juiz_std::geometry::Vector3>::from_value(it->second);
+        if (auto it = o.find("rotation"); it != o.end()) out.rotation = type_traits<::juiz_std::geometry::Quaternion>::from_value(it->second);
+        return out;
+    }
+};
+}
+
+namespace juiz_std::geometry {
+// 時刻と座標系つきの座標変換 (ROS 2 の geometry_msgs/TransformStamped と同じ形)。
+// header.frame_id が親 (始点)、child_frame_id が子 (終点)
+struct TransformStamped {
+    ::juiz_std::common::Header header{juiz::type_traits<::juiz_std::common::Header>::from_value(juiz::Value(std::map<std::string, juiz::Value>{{"frame_id", juiz::Value(std::string(""))}, {"stamp", juiz::Value(std::map<std::string, juiz::Value>{{"nanosec", juiz::Value(INT64_C(0))}, {"sec", juiz::Value(INT64_C(0))}})}}))};
+    std::string child_frame_id{""};
+    ::juiz_std::geometry::Transform transform{juiz::type_traits<::juiz_std::geometry::Transform>::from_value(juiz::Value(std::map<std::string, juiz::Value>{{"rotation", juiz::Value(std::map<std::string, juiz::Value>{{"w", juiz::Value(1.0)}, {"x", juiz::Value(0.0)}, {"y", juiz::Value(0.0)}, {"z", juiz::Value(0.0)}})}, {"translation", juiz::Value(std::map<std::string, juiz::Value>{{"x", juiz::Value(0.0)}, {"y", juiz::Value(0.0)}, {"z", juiz::Value(0.0)}})}}))};
+
+    bool operator==(const TransformStamped& o) const { return header == o.header && child_frame_id == o.child_frame_id && transform == o.transform; }
+    bool operator!=(const TransformStamped& o) const { return !(*this == o); }
+};
+}
+
+namespace juiz {
+template<> struct type_traits<::juiz_std::geometry::TransformStamped> {
+    // Process の戻り値になったとき、辞書にせず C++ の値のまま渡す (遅延評価 L3)
+    static constexpr bool native = true;
+    static const TypeInfo& type_info() {
+        return local_type_info<::juiz_std::geometry::TransformStamped>(
+            "{\"doc\":\"\346\231\202\345\210\273\343\201\250\345\272\247\346\250\231\347\263\273\343\201\244\343\201\215\343\201\256\345\272\247\346\250\231\345\244\211\346\217\233 (ROS 2 \343\201\256 geometry_msgs/TransformStamped \343\201\250\345\220\214\343\201\230\345\275\242)\343\200\202\\nheader.frame_id \343\201\214\350\246\252 (\345\247\213\347\202\271)\343\200\201child_frame_id \343\201\214\345\255\220 (\347\265\202\347\202\271)\",\"fields\":[{\"default\":{\"fra"
+            "me_id\":\"\",\"stamp\":{\"nanosec\":0,\"sec\":0}},\"name\":\"header\",\"type\":{\"doc\":\"\343\203\207\343\203\274\343\202\277\343\201\256\346\231\202\345\210\273\343\201\250\345\272\247\346\250\231\347\263\273\",\"fields\":[{\"default\":{\"nanosec\":0,\"sec\":0},\"doc\":\"\343\203\207\343\203\274\343\202\277\343\202\222\345\217\226\343\201\243\343\201\237\346\231\202\345\210\273\",\"name\":\"stamp\",\"t"
+            "ype\":{\"doc\":\"\346\231\202\345\210\273 (1970-01-01T00:00:00Z \343\201\213\343\202\211\343\201\256\347\265\214\351\201\216\346\231\202\351\226\223)\",\"fields\":[{\"default\":0,\"doc\":\"\347\247\222\",\"name\":\"sec\",\"type\":\"long\"},{\"default\":0,\"doc\":\"\347\247\222\346\234\252\346\272\200 [ns] (0\343\200\234999999999)\",\"name\":\"nanosec\",\"t"
+            "ype\":\"int\"}],\"name\":\"Time\",\"namespace\":\"juiz_std.common\",\"type\":\"record\"}},{\"default\":\"\",\"doc\":\"\345\272\247\346\250\231\347\263\273\343\201\256\345\220\215\345\211\215\",\"name\":\"frame_id\",\"type\":\"string\"}],\"name\":\"Header\",\"namespace\":\"juiz_std.common\",\"t"
+            "ype\":\"record\"}},{\"default\":\"\",\"name\":\"child_frame_id\",\"type\":\"string\"},{\"default\":{\"rotation\":{\"w\":1.0,\"x\":0.0,\"y\":0.0,\"z\":0.0},\"translation\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}},\"name\":\"transform\",\"type\":{\"doc"
+            "\":\"\345\272\247\346\250\231\345\244\211\346\217\233 (ROS 2 \343\201\256 geometry_msgs/Transform \343\201\250\345\220\214\343\201\230\345\275\242)\343\200\202\\n\345\255\220\343\201\256\345\272\247\346\250\231\343\202\222\350\246\252\343\201\256\345\272\247\346\250\231\343\201\270\345\206\231\343\201\231: p_\350\246\252 = rotation \302\267 p_\345\255\220 + translation (docs/spec/transformations.md)\",\"fields\":[{\"default\":"
+            "{\"x\":0.0,\"y\":0.0,\"z\":0.0},\"name\":\"translation\",\"type\":{\"doc\":\"\347\251\272\351\226\223\343\201\256\343\203\231\343\202\257\343\203\210\343\203\253\",\"fields\":[{\"default\":0.0,\"name\":\"x\",\"type\":\"double\"},{\"default\":0.0,\"name\":\"y\",\"type\":\"double\"},{\"default\":0.0,\"nam"
+            "e\":\"z\",\"type\":\"double\"}],\"name\":\"Vector3\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}},{\"default\":{\"w\":1.0,\"x\":0.0,\"y\":0.0,\"z\":0.0},\"name\":\"rotation\",\"type\":{\"doc\":\"\345\233\236\350\273\242\343\202\222\350\241\250\343\201\231\345\233\233\345\205\203\346\225\260 (\346\227\242\345\256\232"
+            "\345\200\244\343\201\257\345\233\236\350\273\242\343\201\252\343\201\227)\",\"fields\":[{\"default\":0.0,\"name\":\"x\",\"type\":\"double\"},{\"default\":0.0,\"name\":\"y\",\"type\":\"double\"},{\"default\":0.0,\"name\":\"z\",\"type\":\"double\"},{\"default\":1.0,\"name\":\"w\",\"type\":\"double"
+            "\"}],\"name\":\"Quaternion\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}}],\"name\":\"Transform\",\"namespace\":\"juiz_std.geometry\",\"type\":\"record\"}}],\"name\":\"TransformStamped\",\"namespace\":\"juiz_std.geometr"
+            "y\",\"type\":\"record\"}");
+    }
+    // ABI タグ (メモリ上の形の版) に入れる、生成器の版
+    static std::string layout() { return "juiz-idl-0.2.0"; }
+    static juiz::Value to_value(const ::juiz_std::geometry::TransformStamped& v) {
+        std::map<std::string, juiz::Value> m;
+        m.emplace("header", type_traits<::juiz_std::common::Header>::to_value(v.header));
+        m.emplace("child_frame_id", type_traits<std::string>::to_value(v.child_frame_id));
+        m.emplace("transform", type_traits<::juiz_std::geometry::Transform>::to_value(v.transform));
+        return juiz::Value(std::move(m));
+    }
+    // v は型で読んだ後の値 (足りないフィールドは既定値で埋めてある、仕様 §4)
+    static ::juiz_std::geometry::TransformStamped from_value(const juiz::Value& v) {
+        ::juiz_std::geometry::TransformStamped out;
+        if (!v.isObjectValue()) return out;
+        const auto& o = v.objectValue();
+        if (auto it = o.find("header"); it != o.end()) out.header = type_traits<::juiz_std::common::Header>::from_value(it->second);
+        if (auto it = o.find("child_frame_id"); it != o.end()) out.child_frame_id = type_traits<std::string>::from_value(it->second);
+        if (auto it = o.find("transform"); it != o.end()) out.transform = type_traits<::juiz_std::geometry::Transform>::from_value(it->second);
         return out;
     }
 };
