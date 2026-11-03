@@ -109,7 +109,7 @@ mapper の HTTP ブローカー(8001)で `web/` を配信する。地図(数秒�
 5. **M4 juizapp 化と配布**: 5 ターゲットのビルド、`juiz pack`、`juiz run` での結合テスト、Releases への添付(mobile_sim と同じく GitHub の画面で Release を作る運用)。
    - conf の subsystem に `package: mobile_sim` を書き、`juiz run` が depends の確認に使うようにした(`juiz -f` でもそのまま動く)。GMapping の LICENSE(BSD-3-Clause)をパッケージに入れる。
 6. **M5 Docker**: mobile_sim と mapper を一緒に動かす compose.yml と、ghcr.io への公開。
-   - 結果: mapper のイメージは pip の juiz-cli で `juiz run`(`--depend mobile_sim=http://mobile_sim:8000`)。HTTP の subsystem でもトピックは届く(mobile_sim が、mapper の接続元アドレスの 8001 番に送る)。compose で 2 つのコンテナをつないだ結合テストを CI で amd64 と arm64 に走らせる。
+   - 結果: mapper のイメージは pip の juiz-cli で、app.conf の IPC の subsystem を HTTP(`MOBILE_SIM_URL`)に置き換えて `juiz -f` で動かす(mobile_sim のイメージは `juiz -f` で動くので、`juiz run` の depends の確かめは通らない)。HTTP の subsystem でもトピックは届く(mobile_sim が、mapper の接続元アドレスの 8001 番に送る)。compose で 2 つのコンテナをつないだ結合テストを CI で amd64 と arm64 に走らせる。
 
 その後に、保存した地図で自己位置推定(AMCL 相当)、実機の基礎パッケージとのつなぎ方、ループの閉じ方の調整などを考える。
 

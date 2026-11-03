@@ -4,6 +4,7 @@
 #   docker build -f docker/Dockerfile -t mapper_gmapping .
 #
 # C++ のプラグインは C ABI なので、juiz は pip の juiz-cli をそのまま使う。
+# mobile_sim のイメージは juiz run ではなく juiz -f で動くので、こちらも conf の HTTP の subsystem でつなぐ。
 # juiz_sdk の版は juiz と揃える(CMakeLists.txt の MAPPER_GMAPPING_JUIZ_SDK_VERSION と app/juizapp.yaml の juiz)。
 ARG JUIZ_VERSION=0.1.0
 
@@ -24,20 +25,15 @@ RUN sdk=$(scripts/fetch_juiz_sdk.sh "${JUIZ_VERSION}") \
     && mkdir -p "/plugins/$target" \
     && cp build/src/component/libmapper_gmapping.so build/src/component/libjuiz_sdk.so "/plugins/$target/"
 
-FROM python:3.12-slim-bookworm AS base
+FROM python:3.12-slim-bookworm
 ARG JUIZ_VERSION
 RUN pip install --no-cache-dir "juiz-cli==${JUIZ_VERSION}"
-
-# 配布と同じ .juizapp を作る(このアーキのプラグインだけ)
-FROM base AS pack
-WORKDIR /src
-COPY . .
-COPY --from=build /plugins /plugins
-RUN scripts/pack.sh /plugins /dist
-
-FROM base
-RUN --mount=type=bind,from=pack,source=/dist,target=/dist \
-    juiz install /dist/mapper_gmapping-*.juizapp
+# app/ と同じ形にする(conf からの相対パスでプラグインとブラウザ画面を探す)
+COPY app/app.conf /opt/mapper_gmapping/
+COPY app/web /opt/mapper_gmapping/web
+COPY --from=build /plugins /opt/mapper_gmapping/plugins
+COPY LICENSE-MIT LICENSE-APACHE /opt/mapper_gmapping/
+COPY third_party/openslam_gmapping/LICENSE /opt/mapper_gmapping/LICENSE-openslam_gmapping
 COPY docker/entrypoint.sh /usr/local/bin/mapper_gmapping-entrypoint
 # 画面の「保存」の相対パスはここから解決される。地図を残すときは -v ./maps:/maps
 WORKDIR /maps
