@@ -2,7 +2,7 @@
 
 [GMapping](https://github.com/OpenJUIZ/openslam_gmapping) を使って、LiDAR のスキャンとオドメトリから地図と自己位置を推定する [JUIZ](https://github.com/OpenJUIZ/juiz) のアプリです。`.juizapp` として配布し、[mobile_sim](https://github.com/OpenJUIZ/mobile_sim) と組み合わせて使います。
 
-> 状態: 開発中です(M4 .juizapp のビルドまで。最初のリリースはまだ)。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
+> 状態: 0.1.0 をリリースしました。Docker イメージ(M5)まであります。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
 
 ## 使い方
 
@@ -18,6 +18,20 @@ mapper は `juizapp.yaml` の `depends`(`mobile_sim >=0.2.0, <0.3`)を見て、�
 
 対応するターゲット: Linux(x86_64、aarch64)、macOS(Apple シリコン、Intel)、Windows(x86_64)。
 
+### Docker
+
+mobile_sim のイメージと一緒に動かします。
+
+```sh
+git clone --recursive https://github.com/OpenJUIZ/mapper_gmapping.git && cd mapper_gmapping
+docker compose -f docker/compose.yml up
+# ブラウザで http://localhost:8001/ (地図づくり) と http://localhost:8000/ (シミュレータ) を開く
+```
+
+- イメージは `ghcr.io/openjuiz/mapper_gmapping`(linux/amd64 と linux/arm64)です。`:latest` はリリースの版、`:edge` は main の最新です。手元でビルドするときは `up --build` にします。
+- 「地図を保存」の地図は `docker/maps/` に出ます(コンテナの `/maps`)。
+- 別の場所の mobile_sim につなぐときは、環境変数 `MOBILE_SIM_URL`(既定 `http://mobile_sim:8000`)を変えます。mobile_sim は、mapper が接続してきたアドレスの 8001 番にトピックを送るので、mobile_sim からその番号に届くようにしてください。
+
 ## 構成
 
 | パス | 中身 |
@@ -28,6 +42,7 @@ mapper は `juizapp.yaml` の `depends`(`mobile_sim >=0.2.0, <0.3`)を見て、�
 | `tests/` | `src/core` のテスト(ctest) |
 | `app/` | `juiz` で起動する conf |
 | `scripts/` | juiz_sdk の取得、開発用のビルド、結合テスト |
+| `docker/` | Dockerfile と compose.yml |
 
 ## 開発
 
@@ -114,7 +129,13 @@ scripts/pack.sh app/plugins dist       # dist/mapper_gmapping-<version>.juizapp
 python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-0.2.0.juizapp --juizapp dist/mapper_gmapping-0.1.0.juizapp
 ```
 
-CI の Release ワークフローは 5 ターゲットでビルド・テストして `.juizapp` にまとめ、mobile_sim の main から作った `.juizapp` と一緒に `juiz run` で動かして確かめます。GitHub の画面で `v<version>` の Release を作ると、その Release に `.juizapp` が付きます(`app/juizapp.yaml` と `CMakeLists.txt` の版をタグに合わせておく)。
+動いている mobile_sim と mapper(`docker compose` など)にも同じテストを当てられます(`--mapper-out` は mapper から見た `--out` のパス)。
+
+```sh
+python3 scripts/integration_test.py --sim-url http://localhost:8000 --mapper-url http://localhost:8001 --out docker/maps --mapper-out /maps
+```
+
+CI の Release ワークフローは 5 ターゲットでビルド・テストして `.juizapp` にまとめ、mobile_sim の main から作った `.juizapp` と一緒に `juiz run` で動かして確かめます。GitHub の画面で `v<version>` の Release を作ると、その Release に `.juizapp` が付き、Docker ワークフローが `ghcr.io/openjuiz/mapper_gmapping:<version>` と `:latest` を公開します(`app/juizapp.yaml` と `CMakeLists.txt` の版をタグに合わせておく)。
 
 ## ライセンス
 
