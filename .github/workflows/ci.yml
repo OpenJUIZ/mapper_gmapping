@@ -49,11 +49,17 @@ jobs:
         run: |
           git clone --depth 1 --branch "$MOBILE_SIM_REF" https://github.com/OpenJUIZ/mobile_sim.git ../mobile_sim
           (cd ../mobile_sim && scripts/dev_plugin.sh --release)
-      - name: Integration test with mobile_sim
-        # mobile_sim を部屋で一周させ、トピックで受けた odom と scan から作った地図と姿勢を真の値と比べる
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1
+          npx playwright install --with-deps chromium
+      - name: Integration and UI test with mobile_sim
+        # mobile_sim を部屋で一周させ、トピックで受けた odom と scan から作った地図と姿勢を真の値と比べる。
+        # 続けてブラウザ画面を Playwright で操作する
         run: |
           pip install pillow
-          python3 -u scripts/integration_test.py --mobile-sim ../mobile_sim --out build/integration_map
+          python3 -u scripts/integration_test.py --mobile-sim ../mobile_sim --out build/integration_map \
+            --ui build/integration_map/ui_test.png
       - name: Upload the map
         if: always()
         uses: actions/upload-artifact@v4

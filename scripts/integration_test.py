@@ -45,6 +45,8 @@ def main():
     ap.add_argument("--port", type=int, default=18001)
     ap.add_argument("--speed", type=float, default=0.5)
     ap.add_argument("--out", type=Path, help="地図(YAML + PNG)を書くディレクトリ")
+    ap.add_argument("--ui", type=Path, metavar="SCREENSHOT",
+                    help="続けてブラウザ画面のテスト (scripts/ui_test.js、Playwright が要る) を走らせ、画面を保存する")
     args = ap.parse_args()
     if not args.mobile_sim and not args.mobile_sim_juizapp:
         sys.exit("give --mobile-sim or --mobile-sim-juizapp")
@@ -76,6 +78,9 @@ def main():
         wait_ready(base, procs[-1])
 
         run(sim, base, args)
+        if args.ui:
+            print("# ui_test.js")
+            subprocess.run(["node", str(ROOT / "scripts" / "ui_test.js"), f"{base}/", str(args.ui.resolve())], check=True)
         print("OK")
     finally:
         for p in reversed(procs):
