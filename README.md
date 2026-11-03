@@ -2,7 +2,7 @@
 
 [GMapping](https://github.com/OpenJUIZ/openslam_gmapping) を使って、LiDAR のスキャンとオドメトリから地図と自己位置を推定する [JUIZ](https://github.com/OpenJUIZ/juiz) のアプリです。`.juizapp` として配布し、[mobile_sim](https://github.com/OpenJUIZ/mobile_sim) と組み合わせて使います。
 
-> 状態: 0.1.0 をリリースしました。Docker イメージ(M5)まであります。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
+> 状態: 0.2.0 をリリースしました(juiz 0.2.0 の Transformations に対応)。Docker イメージまであります。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
 
 ## 使い方
 
