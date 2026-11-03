@@ -2,7 +2,21 @@
 
 [GMapping](https://github.com/OpenJUIZ/openslam_gmapping) を使って、LiDAR のスキャンとオドメトリから地図と自己位置を推定する [JUIZ](https://github.com/OpenJUIZ/juiz) のアプリです。`.juizapp` として配布し、[mobile_sim](https://github.com/OpenJUIZ/mobile_sim) と組み合わせて使います。
 
-> 状態: 開発中です(M3 ブラウザ画面まで)。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
+> 状態: 開発中です(M4 .juizapp のビルドまで。最初のリリースはまだ)。計画は [docs/plan.md](docs/plan.md)、進み具合は [Issues](https://github.com/OpenJUIZ/mapper_gmapping/issues) を見てください。
+
+## 使い方
+
+[Releases](https://github.com/OpenJUIZ/mapper_gmapping/releases) から `mapper_gmapping-<version>.juizapp` を、[mobile_sim の Releases](https://github.com/OpenJUIZ/mobile_sim/releases) から 0.2 系の `mobile_sim-<version>.juizapp` を取ってきます。
+
+```sh
+pip install juiz-cli==0.1.0
+juiz run mobile_sim-0.2.0.juizapp          # 先に動かしておく(ipc://mobile_sim、http://localhost:8000/)
+juiz run mapper_gmapping-0.1.0.juizapp     # 別の端末で。ブラウザで http://localhost:8001/ を開く
+```
+
+mapper は `juizapp.yaml` の `depends`(`mobile_sim >=0.2.0, <0.3`)を見て、動いている mobile_sim の版を確かめてからつなぎます。画面のキーかパッドでロボットを動かすと地図が育ち、「地図を保存」で ROS map_server の形式(YAML + PNG)に書き出せます。保存先の相対パスは `juiz run` を起動したディレクトリからです。
+
+対応するターゲット: Linux(x86_64、aarch64)、macOS(Apple シリコン、Intel)、Windows(x86_64)。
 
 ## 構成
 
@@ -91,6 +105,16 @@ python3 scripts/integration_test.py --mobile-sim ../mobile_sim
 # 続けてブラウザ画面も Playwright で確かめる(npm install playwright が要る)
 python3 scripts/integration_test.py --mobile-sim ../mobile_sim --ui ui_test.png
 ```
+
+### パッケージを作る
+
+```sh
+scripts/dev_plugin.sh                  # この機械のプラグインを app/plugins/<target>/ に置く
+scripts/pack.sh app/plugins dist       # dist/mapper_gmapping-<version>.juizapp
+python3 scripts/integration_test.py --mobile-sim-juizapp mobile_sim-0.2.0.juizapp --juizapp dist/mapper_gmapping-0.1.0.juizapp
+```
+
+CI の Release ワークフローは 5 ターゲットでビルド・テストして `.juizapp` にまとめ、mobile_sim の main から作った `.juizapp` と一緒に `juiz run` で動かして確かめます。GitHub の画面で `v<version>` の Release を作ると、その Release に `.juizapp` が付きます(`app/juizapp.yaml` と `CMakeLists.txt` の版をタグに合わせておく)。
 
 ## ライセンス
 

@@ -16,7 +16,9 @@ option(MAPPER_GMAPPING_BUILD_COMPONENT "juiz のコンポーネント(プラグ�
 set(MAPPER_GMAPPING_JUIZ_SDK_VERSION 0.1.0 CACHE STRING "使う juiz_sdk の版(juiz と完全に一致させる)")
 
 if (MSVC)
+  # ソースは UTF-8。M_PI などを使えるようにする
   add_compile_options(/utf-8)
+  add_compile_definitions(_USE_MATH_DEFINES NOMINMAX)
 endif ()
 
 # GMapping は静的ライブラリにしてプラグインに入れる(配るのはプラグインと libjuiz_sdk だけにする)
