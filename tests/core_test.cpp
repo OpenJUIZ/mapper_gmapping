@@ -124,6 +124,9 @@ static void test_slam() {
     CHECK(mapper.updates() > 20);
     CHECK(slam_err < 0.2);
     CHECK(angle_diff(est.theta, last_truth.theta) < 0.05);
+    // GMapping の向きは周回で ±π を越えて積もるので、返す前に (-π, π] に収める (1.5 周するとここで分かる)
+    CHECK(std::fabs(est.theta) <= M_PI + 1e-9);
+    for (const auto& p : mapper.particles()) CHECK(std::fabs(p.theta) <= M_PI + 1e-9);
     CHECK(slam_err < odom_err);
     CHECK(mapper.particles().size() == 30);
     CHECK(mapper.trajectory().size() == static_cast<size_t>(mapper.updates()));

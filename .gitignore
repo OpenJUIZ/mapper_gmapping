@@ -6,3 +6,4 @@
 .DS_Store
 /app/.smoke_test.conf
 /core_test_map.*
+app/.*.conf
