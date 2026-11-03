@@ -2,6 +2,8 @@
 //
 // juiz の HTTP ブローカーの /api/container_process/call で ContainerProcess を呼ぶ。
 // - コンテナ gmapping: get_state(5 Hz)、get_map と get_map_info(地図が更新されたとき)、save_map、reset
+// - juiz 0.2 の Transformations: 推定した姿勢は mapper の ContainerPose(/api/container/pose、基準は map_frame)から読む。
+//   読めなければ get_state の pose を使う
 // - mobile_sim(subsystem としてつながっていれば): get_state(真の姿勢とスキャン)、set_velocity(操作)
 //   mapper の HTTP 経由で ipc://mobile_sim/... を呼ぶので、mobile_sim 側の CORS の設定は要らない
 "use strict";
@@ -36,6 +38,19 @@ class JuizClient {
   }
 
   has(type) { return Boolean(this.ids[type]); }
+
+  // Container `name` の、Anchor `reference` から見た位置。Transformations が無い・Transform が無いときは null
+  async containerPose(name, reference) {
+    if (this.noPose || !reference) return null;
+    const q = `identifier=${encodeURIComponent(name)}&reference=${encodeURIComponent(reference)}`;
+    const res = await fetch(`/api/container/pose?${q}`);
+    if (res.status === 404) { this.noPose = true; return null; }
+    if (!res.ok) return null;
+    const p = (await res.json()).pose;
+    const q4 = p.orientation;
+    const theta = Math.atan2(2 * (q4.w * q4.z + q4.x * q4.y), 1 - 2 * (q4.y * q4.y + q4.z * q4.z));
+    return { x: p.position.x, y: p.position.y, theta };
+  }
 
   async call(type, args = {}, asBlob = false) {
     const url = "/api/container_process/call?identifier=" + encodeURIComponent(this.ids[type]);
@@ -148,7 +163,8 @@ function draw(view, map, st, sim, trails, opts) {
 
   const robot = sim ? sim.robots[0] : null;
   const radius = robot ? robot.radius : 0.2;
-  if (robot && opts.showScan) drawScan(ctx, view, st.pose, robot.scan);
+  // 取付位置は mapper が lidar_mount から受け取ったもの(SLAM が使っている値)
+  if (robot && opts.showScan) drawScan(ctx, view, st.pose, robot.scan, st.laser_pose || robot.scan.mount);
   if (opts.showOdom) {
     drawPath(ctx, view, trails.odom, "rgba(120, 120, 120, 0.7)", [4, 4]);
     drawRobot(ctx, view, st.odom, radius, { stroke: "#888", dash: [4, 3] });
@@ -202,11 +218,11 @@ function drawRobot(ctx, view, p, radius, { fill = null, stroke, dash = [] }) {
 }
 
 // mobile_sim のスキャンを、推定した姿勢から描く(地図の壁と重なれば推定が合っている)
-function drawScan(ctx, view, pose, s) {
+function drawScan(ctx, view, pose, s, mount) {
   const c = Math.cos(pose.theta), sn = Math.sin(pose.theta);
-  const sx = pose.x + c * s.mount.x - sn * s.mount.y;
-  const sy = pose.y + sn * s.mount.x + c * s.mount.y;
-  const st = pose.theta + s.mount.theta;
+  const sx = pose.x + c * mount.x - sn * mount.y;
+  const sy = pose.y + sn * mount.x + c * mount.y;
+  const st = pose.theta + mount.theta;
   ctx.fillStyle = "#d4006a";
   s.ranges.forEach((range, i) => {
     if (range > s.range_max) return;
@@ -298,8 +314,13 @@ const fmtPose = (p) => `x ${fmt(p.x)}, y ${fmt(p.y)}, θ ${fmt(p.theta)}`;
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const poseErr = (a, b) => `${fmt(Math.hypot(a.x - b.x, a.y - b.y), 3)} m, ${fmt(Math.abs(wrap(a.theta - b.theta)), 3)} rad`;
 
-function showState(st, sim, map) {
-  $("s_pose").textContent = st.initialized ? fmtPose(st.pose) : "(スキャン待ち)";
+function showState(st, sim, map, name, fromContainer) {
+  $("s_pose").textContent = st.initialized ? fmtPose(st.pose) : (st.waiting_laser_pose ? "(LiDAR の取付位置待ち)" : "(スキャン待ち)");
+  $("s_frame").textContent = !st.map_frame ? "(書かない)"
+    : st.pose_error ? `${st.map_frame} → ${name}: ${st.pose_error}`
+    : `${st.map_frame} → ${name}${fromContainer ? "(ContainerPose から)" : ""}`;
+  $("s_frame").classList.toggle("bad", Boolean(st.pose_error));
+  $("s_mount").textContent = st.laser_pose ? fmtPose(st.laser_pose) : "-";
   $("s_updates").textContent = `${st.updates} 回(粒子 ${st.particles.length})`;
   $("s_scans").textContent = `${st.scans}(捨てた ${st.dropped})`;
   $("s_map").textContent = map.info ? `${map.info.width}×${map.info.height}、${map.info.resolution} m、${map.updates} 回目の更新まで` : "まだ無い";
@@ -369,6 +390,10 @@ async function main() {
     busy = true;
     try {
       st = await client.call("gmapping_get_state");
+      // 推定した姿勢は ContainerPose(Anchor map_frame から見た mapper)から読む
+      const name = client.containers.gmapping_get_state;
+      const cp = st.initialized ? await client.containerPose(name, st.map_frame) : null;
+      if (cp) st.pose = cp;
       if (hasSim) sim = await client.call("mobile_sim_get_state");
       if (st.initialized) pushTrail(trails.odom, st.odom.x, st.odom.y);
       if (sim) pushTrail(trails.truth, sim.robots[0].pose.x, sim.robots[0].pose.y);
@@ -397,7 +422,7 @@ async function main() {
         showTruth: $("show_truth").checked,
         showOdom: $("show_odom").checked,
       });
-      showState(st, sim, map);
+      showState(st, sim, map, client.containers.gmapping_get_state, Boolean(cp));
 
       if (input) {
         // 入力があるあいだは指令を送り続ける(mobile_sim は指令が途切れると止まる)
