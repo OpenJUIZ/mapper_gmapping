@@ -43,7 +43,7 @@ template<> struct type_traits<::juiz_std::sensor::ImageInfo> {
             "\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::sensor::ImageInfo& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("header", type_traits<::juiz_std::common::Header>::to_value(v.header));
@@ -108,7 +108,7 @@ template<> struct type_traits<::juiz_std::sensor::Imu> {
             "eleration_covariance\",\"type\":{\"items\":\"double\",\"type\":\"array\"}}],\"name\":\"Imu\",\"namespace\":\"juiz_std.sensor\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::sensor::Imu& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("header", type_traits<::juiz_std::common::Header>::to_value(v.header));
@@ -182,7 +182,7 @@ template<> struct type_traits<::juiz_std::sensor::LaserScan> {
             "e\":\"array\"}}],\"name\":\"LaserScan\",\"namespace\":\"juiz_std.sensor\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::sensor::LaserScan& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("header", type_traits<::juiz_std::common::Header>::to_value(v.header));
@@ -254,7 +254,7 @@ template<> struct type_traits<::juiz_std::sensor::Range> {
             "name\":\"ULTRASOUND\",\"ros_type\":\"uint8\",\"type\":\"int\",\"value\":0},{\"name\":\"INFRARED\",\"ros_type\":\"uint8\",\"type\":\"int\",\"value\":1}],\"name\":\"Range\",\"namespace\":\"juiz_std.sensor\",\"type\":\"record\"}");
     }
     // ABI タグ (メモリ上の形の版) に入れる、生成器の版
-    static std::string layout() { return "juiz-idl-0.1.0"; }
+    static std::string layout() { return "juiz-idl-0.2.0"; }
     static juiz::Value to_value(const ::juiz_std::sensor::Range& v) {
         std::map<std::string, juiz::Value> m;
         m.emplace("header", type_traits<::juiz_std::common::Header>::to_value(v.header));

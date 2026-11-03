@@ -5,6 +5,9 @@
 //
 //   gmapping_set_odometry(odom)  odom (juiz_std.geometry.Pose2DStamped) を購読。最新のオドメトリを覚えるだけ
 //   gmapping_add_scan(scan)      scan (juiz_std.sensor.LaserScan) を購読。覚えているオドメトリと組にして SLAM を進める
+//                                処理したら、推定した姿勢を ContainerPose として基準 map_frame (既定 map) に書く (Transformations)
+//   gmapping_set_laser_pose(mount) lidar_mount (juiz_std.geometry.PoseStamped、ロボットから見た LiDAR) を購読。
+//                                取り付け位置が変わったら地図をやり直す
 //   gmapping_get_pose()          推定した姿勢 (juiz_std.geometry.Pose2DStamped、frame_id は map)
 //   gmapping_get_map()           地図の画像 (8 bit のグレースケール。占有 0、空き 254、不明 205)
 //   gmapping_get_map_info()      地図の解像度・原点・大きさ (mapconf と同じ項目)
@@ -29,6 +32,7 @@ namespace {
 
 using juiz::Value;
 using juiz_std::geometry::Pose2DStamped;
+using juiz_std::geometry::PoseStamped;
 using juiz_std::sensor::LaserScan;
 using mapper_gmapping::Pose2D;
 
@@ -66,6 +70,24 @@ Value pose_list(const std::vector<Pose2D>& poses) {
     list.reserve(poses.size());
     for (const auto& p : poses) list.push_back(Value(std::vector<double>{p.x, p.y, p.theta}));
     return Value(list);
+}
+
+// 四元数の z 軸まわりの回転角 (yaw)
+double yaw_of(const juiz_std::geometry::Quaternion& q) {
+    return std::atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+}
+
+// コンテナの引数のうち、Transformations まわりの設定
+struct FrameSettings {
+    std::string map_frame = "map";   // 推定した姿勢を書く基準 (空なら書かない)
+    bool wait_laser_pose = false;    // lidar_mount を受け取るまでスキャンを捨てる
+};
+
+FrameSettings parse_frames(const juiz::CapsuleMap& args) {
+    FrameSettings f;
+    if (args.has("map_frame")) f.map_frame = args.get_string("map_frame");
+    if (args.has("wait_laser_pose")) f.wait_laser_pose = args.get_bool("wait_laser_pose");
+    return f;
 }
 
 // コンテナの引数 (conf の containers の項目) からパラメータを読む。書いていない項目は既定値
@@ -126,8 +148,32 @@ mapper_gmapping::Params parse_params(const juiz::CapsuleMap& args, double& map_u
 
 class GMappingContainer {
 public:
-    GMappingContainer(const mapper_gmapping::Params& params, double map_update_interval)
-        : mapper_(params), map_update_interval_(map_update_interval) {}
+    GMappingContainer(const mapper_gmapping::Params& params, double map_update_interval, const FrameSettings& frames)
+        : mapper_(params), map_update_interval_(map_update_interval), frames_(frames) {}
+
+    const std::string& map_frame() const { return frames_.map_frame; }
+
+    bool initialized() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return mapper_.initialized();
+    }
+
+    // ロボットから見た LiDAR の位置を受け取る。変わったら地図と粒子を捨ててやり直す
+    bool set_laser_pose(const PoseStamped& mount) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const Pose2D p{mount.pose.position.x, mount.pose.position.y, yaw_of(mount.pose.orientation)};
+        have_laser_pose_ = true;
+        if (!mapper_.set_laser_pose(p)) return false;
+        map_ = mapper_gmapping::OccupancyGrid();
+        map_updates_ = -1;
+        return true;
+    }
+
+    // 推定した姿勢を ContainerPose に書けなかった理由を覚える (gmapping_get_state の pose_error で見える)
+    void record_pose_error(const std::string& what) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pose_error_ = what;
+    }
 
     bool set_odometry(const Pose2DStamped& odom) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -140,7 +186,7 @@ public:
     bool add_scan(const LaserScan& v) {
         std::lock_guard<std::mutex> lock(mutex_);
         ++scans_;
-        if (!have_odom_) {
+        if (!have_odom_ || (frames_.wait_laser_pose && !have_laser_pose_)) {
             ++dropped_;
             return false;
         }
@@ -224,6 +270,10 @@ public:
                      {"particles", pose_list(mapper_.particles())},
                      {"trajectory", pose_list(mapper_.trajectory())},
                      {"map_updates", Value(static_cast<int64_t>(map_updates_))},
+                     {"laser_pose", pose_value(mapper_.params().laser_pose)},
+                     {"waiting_laser_pose", Value(frames_.wait_laser_pose && !have_laser_pose_)},
+                     {"map_frame", Value(frames_.map_frame)},
+                     {"pose_error", Value(pose_error_)},
                      {"last_error", Value(last_error_)}};
     }
 
@@ -248,6 +298,9 @@ private:
     std::mutex mutex_;
     mapper_gmapping::Mapper mapper_;
     double map_update_interval_;
+    FrameSettings frames_;
+    bool have_laser_pose_ = false;
+    std::string pose_error_;
     bool have_odom_ = false;
     Pose2D odom_;
     double odom_time_ = 0.0;
@@ -277,7 +330,7 @@ static auto gmapping_manif = ContainerManifest("gmapping");
 GMappingContainer* gmapping(juiz::CapsuleMap args) {
     double map_update_interval = 2.0;
     const auto params = parse_params(args, map_update_interval);
-    return new GMappingContainer(params, map_update_interval);
+    return new GMappingContainer(params, map_update_interval, parse_frames(args));
 }
 COMPONENT_CONTAINER_FACTORY(gmapping_manif, gmapping);
 
@@ -290,9 +343,32 @@ COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_set_odometry_man
 
 static auto gmapping_add_scan_manif = ProcessManifest("gmapping_add_scan").add_typed_arg<LaserScan>("scan", "laser scan");
 std::optional<bool> gmapping_add_scan(GMappingContainer* c, const LaserScan& scan) {
-    return guarded(c, [&]() -> std::optional<bool> { return c->add_scan(scan); });
+    return guarded(c, [&]() -> std::optional<bool> {
+        const bool updated = c->add_scan(scan);
+        if (c->initialized() && !c->map_frame().empty()) {
+            // 推定した姿勢 (最良の粒子 + その後のオドメトリ) を、基準 map_frame から見たこのコンテナの位置として
+            // スキャンのたびに書く (conf に map_frame -> このコンテナ の Transform が要る)。書けなくても SLAM は続ける
+            const Pose2DStamped p = c->pose();
+            const double th = p.pose.theta;
+            try {
+                juiz::set_pose(c, c->map_frame(),
+                               juiz::make_pose(p.pose.position.x, p.pose.position.y, 0.0, 0.0, 0.0, std::sin(th / 2.0),
+                                               std::cos(th / 2.0)));
+            } catch (const juiz::TransformationsError& e) {
+                c->record_pose_error(e.what());
+            }
+        }
+        return updated;
+    });
 }
 COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_add_scan_manif, gmapping_add_scan);
+
+static auto gmapping_set_laser_pose_manif = ProcessManifest("gmapping_set_laser_pose")
+                                                 .add_typed_arg<PoseStamped>("mount", "LiDAR pose seen from the robot");
+std::optional<bool> gmapping_set_laser_pose(GMappingContainer* c, const PoseStamped& mount) {
+    return guarded(c, [&]() -> std::optional<bool> { return c->set_laser_pose(mount); });
+}
+COMPONENT_CONTAINER_PROCESS_FACTORY(GMappingContainer, gmapping_set_laser_pose_manif, gmapping_set_laser_pose);
 
 static auto gmapping_get_pose_manif = ProcessManifest("gmapping_get_pose").returns<Pose2DStamped>();
 std::optional<Pose2DStamped> gmapping_get_pose(GMappingContainer* c) {
@@ -341,6 +417,7 @@ auto component_manifest() {
         .add_container(gmapping_manifest()
                            .add_process(gmapping_set_odometry_manifest())
                            .add_process(gmapping_add_scan_manifest())
+                           .add_process(gmapping_set_laser_pose_manifest())
                            .add_process(gmapping_get_pose_manifest())
                            .add_process(gmapping_get_map_manifest())
                            .add_process(gmapping_get_map_info_manifest())

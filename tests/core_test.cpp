@@ -249,6 +249,17 @@ static void test_lifecycle() {
         CHECK(threw);
     }
     {
+        // 取り付け位置を変えると最初からやり直す。同じ値なら何もしない
+        Mapper m(test_params());
+        CHECK(m.add_scan(scan, Pose2D{}));
+        CHECK(!m.set_laser_pose(Pose2D{}));
+        CHECK(m.initialized());
+        CHECK(m.set_laser_pose(Pose2D{0.1, 0.0, 0.0}));
+        CHECK(!m.initialized());
+        CHECK(dist(m.params().laser_pose, Pose2D{0.1, 0.0, 0.0}) < 1e-12);
+        CHECK(m.add_scan(scan, Pose2D{}));
+    }
+    {
         // 空のスキャンは例外
         Mapper m;
         bool threw = false;

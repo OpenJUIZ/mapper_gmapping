@@ -17,7 +17,8 @@ concurrency:
 
 env:
   # パッケージのテストで動かす mobile_sim(odom と scan をトピックに出す 0.2.0 以降)
-  MOBILE_SIM_REF: main
+  # mobile_sim#23 (Transformations、0.3.0) がマージされたら main に戻す
+  MOBILE_SIM_REF: claude/project-thread-ur68ns
 
 jobs:
   versions:
