@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(mapper_gmapping VERSION 0.2.0 LANGUAGES CXX)
+project(mapper_gmapping VERSION 0.3.0 LANGUAGES CXX)
 
 # GMapping (OpenJUIZ/openslam_gmapping) で SLAM をする juiz のコンポーネント。計画は docs/plan.md
 #
@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(MAPPER_GMAPPING_BUILD_COMPONENT "juiz のコンポーネント(プラグイン)をビルドする。juiz_sdk が要る" ON)
-set(MAPPER_GMAPPING_JUIZ_SDK_VERSION 0.2.0 CACHE STRING "使う juiz_sdk の版(juiz と完全に一致させる)")
+set(MAPPER_GMAPPING_JUIZ_SDK_VERSION 0.2.1 CACHE STRING "使う juiz_sdk の版(juiz と完全に一致させる)")
 
 if (MSVC)
   # ソースは UTF-8。M_PI などを使えるようにする

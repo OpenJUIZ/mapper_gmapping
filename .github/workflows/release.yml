@@ -146,7 +146,7 @@ jobs:
         # GitHub の画面で Release を作ってタグを打ったときは、その Release に .juizapp を足す
         run: |
           pkg=$(basename dist/*.juizapp)
-          notes="juiz ${{ needs.versions.outputs.juiz }} と mobile_sim 0.2 で動きます: \`pip install juiz-cli==${{ needs.versions.outputs.juiz }}\` の後、\`juiz run mobile_sim-0.2.x.juizapp\` を動かしたまま \`juiz run $pkg\`、http://localhost:8001/ を開く"
+          notes="juiz ${{ needs.versions.outputs.juiz }} と mobile_sim 0.3 で動きます: \`pip install juiz-cli==${{ needs.versions.outputs.juiz }}\` の後、\`juiz run mobile_sim-0.3.x.juizapp\` を動かしたまま \`juiz run $pkg\`、http://localhost:8001/ を開く"
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" dist/*.juizapp --clobber
           else

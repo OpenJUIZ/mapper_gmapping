@@ -189,6 +189,39 @@ def move_lidar(sim, base):
         time.sleep(0.2)
     check(abs(st["laser_pose"]["x"] - MOUNT_X) < 1e-9, f"mapper takes the LiDAR mount from topic lidar_mount ({st['laser_pose']})")
     check(not st["waiting_laser_pose"], "mapper is not waiting for the mount any more")
+    return st
+
+
+def pose2(p):
+    return (p["pose"]["position"]["x"], p["pose"]["position"]["y"], yaw(p["pose"]["orientation"]))
+
+
+def check_single_tree(sim, base, st, slam):
+    """System をまたぐ Transform slam_odom0 -> odom0 で、mobile_sim の中に map -> odom0 -> robot0 -> lidar0 がつながる"""
+    m2o = pose2(api(base, "container/pose", {"identifier": "slam_odom0", "reference": "map"}))
+    want = st["map_to_odom"]
+    check(
+        math.hypot(m2o[0] - want["x"], m2o[1] - want["y"]) < 0.05 and abs(wrap(m2o[2] - want["theta"])) < 0.05,
+        f"ContainerPose of slam_odom0 from map is map_to_odom ({fmt(m2o)})",
+    )
+    remote = [t for t in api(sim, "transform/list") if "slam_odom0" in t]
+    check(len(remote) == 1, f"mobile_sim has the transform slam_odom0 -> odom0 from the mapper ({remote})")
+    prof = api(sim, "transform/profile_full", {"identifier": remote[0]})
+    check(prof["remote"]["state"] == "ok", f"mobile_sim fetches slam_odom0 from the mapper ({prof['remote']})")
+    # mobile_sim の取り込みは 20 Hz。止まっているので値は揃う
+    time.sleep(0.5)
+    robot = pose2(api(sim, "container/pose", {"identifier": "robot0", "reference": "map"}))
+    check(
+        math.hypot(robot[0] - slam[0], robot[1] - slam[1]) < 0.05 and abs(wrap(robot[2] - slam[2])) < 0.05,
+        f"in mobile_sim, robot0 seen from map is the SLAM pose ({fmt(robot)})",
+    )
+    lidar = api(sim, "container/pose", {"identifier": "lidar0", "reference": "map"})
+    lp = pose2(lidar)
+    c, s = math.cos(slam[2]), math.sin(slam[2])
+    check(
+        math.hypot(lp[0] - (slam[0] + c * MOUNT_X), lp[1] - (slam[1] + s * MOUNT_X)) < 0.05,
+        f"in mobile_sim, lidar0 seen from map follows robot0 -> lidar0 ({fmt(lp)}, frame {lidar['header']['frame_id']})",
+    )
 
 
 def push_cmd_vel(sim, vx, omega):
@@ -251,8 +284,8 @@ def run(sim, base, args):
             break
         time.sleep(0.2)
     check(st["scans"] > 0, f"mapper receives scans over the topic ({st['scans']} scans)")
-    move_lidar(sim, base)
-    check(st["initialized"], "mapper initializes on the first scan")
+    st = move_lidar(sim, base)
+    check(st["initialized"], "mapper initializes on the first scan after the mount")
 
     elapsed = drive(sim, ROUTE, args.speed)
     time.sleep(1.0)  # 最後のスキャンが届くのを待つ
@@ -279,6 +312,7 @@ def run(sim, base, args):
         f"ContainerPose of mapper0 from map is the SLAM pose ({fmt(est)})",
     )
     check(st["pose_error"] == "", f"mapper writes its ContainerPose without errors ({st['pose_error']!r})")
+    check_single_tree(sim, base, st, slam)
 
     info = mapper_call(base, "get_map_info0", "get_map_info")
     png = mapper_call(base, "get_map0", "get_map", raw=True)
