@@ -14,13 +14,25 @@
 //   gmapping_save_map(path)      <path>.yaml と <path>.png に保存する
 //   gmapping_reset()             地図と粒子を捨てて、やり直す
 //   gmapping_get_state()         画面用: 姿勢、粒子、軌跡、更新回数など
+//
+// コンテナ gmapping_odom_frame は、SLAM が推定したオドメトリの原点 (map から見た odom、ROS の map -> odom) を
+// 自分の ContainerPose として書く。juiz の ContainerProcess は自分の位置しか書けないので、mapper とは別のコンテナにした。
+// conf でこのコンテナから mobile_sim の odom0 へ System をまたぐ Transform を張ると、mobile_sim の中で
+// map -> (このコンテナ) -> odom0 -> robot0 -> lidar0 が 1 本の木になる (juiz 0.2.1、#376)。
+//
+//   gmapping_odom_frame_update(odom) odom を購読。引数 mapper のコンテナの map -> odom を、基準 map_frame から見た
+//                                自分の位置として書き、Pose2DStamped (frame_id は map_frame) で返す。
+//                                mapper が地図を作り始める前は書かずに、単位の姿勢を返す
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <iostream>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "juiz/juiz.h"
@@ -146,10 +158,49 @@ mapper_gmapping::Params parse_params(const juiz::CapsuleMap& args, double& map_u
 
 }  // namespace
 
+class GMappingContainer;
+
+// gmapping のコンテナを名前で引く表 (gmapping_odom_frame が mapper を見つけるため)。
+// ロックは「表 → コンテナ」の順にだけ取る
+namespace registry {
+std::mutex& mutex() {
+    static std::mutex m;
+    return m;
+}
+std::map<std::string, GMappingContainer*>& table() {
+    static std::map<std::string, GMappingContainer*> t;
+    return t;
+}
+}  // namespace registry
+
 class GMappingContainer {
 public:
-    GMappingContainer(const mapper_gmapping::Params& params, double map_update_interval, const FrameSettings& frames)
-        : mapper_(params), map_update_interval_(map_update_interval), frames_(frames) {}
+    GMappingContainer(const mapper_gmapping::Params& params, double map_update_interval, const FrameSettings& frames,
+                      const std::string& name)
+        : mapper_(params), map_update_interval_(map_update_interval), frames_(frames), name_(name) {
+        if (name_.empty()) return;
+        std::lock_guard<std::mutex> lock(registry::mutex());
+        registry::table()[name_] = this;
+    }
+
+    ~GMappingContainer() {
+        if (name_.empty()) return;
+        std::lock_guard<std::mutex> lock(registry::mutex());
+        auto it = registry::table().find(name_);
+        if (it != registry::table().end() && it->second == this) registry::table().erase(it);
+    }
+
+    // map から見た odom (オドメトリの原点)。初期化前は nullopt
+    std::optional<Pose2D> map_to_odom() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!mapper_.initialized()) return std::nullopt;
+        return mapper_.map_to_odom();
+    }
+
+    double odom_time() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return odom_time_;
+    }
 
     const std::string& map_frame() const { return frames_.map_frame; }
 
@@ -299,6 +350,7 @@ private:
     mapper_gmapping::Mapper mapper_;
     double map_update_interval_;
     FrameSettings frames_;
+    std::string name_;
     bool have_laser_pose_ = false;
     std::string pose_error_;
     bool have_odom_ = false;
@@ -330,9 +382,68 @@ static auto gmapping_manif = ContainerManifest("gmapping");
 GMappingContainer* gmapping(juiz::CapsuleMap args) {
     double map_update_interval = 2.0;
     const auto params = parse_params(args, map_update_interval);
-    return new GMappingContainer(params, map_update_interval, parse_frames(args));
+    const std::string name = args.has("name") ? args.get_string("name") : std::string();
+    return new GMappingContainer(params, map_update_interval, parse_frames(args), name);
 }
 COMPONENT_CONTAINER_FACTORY(gmapping_manif, gmapping);
+
+// SLAM が推定したオドメトリの原点 (map -> odom) を自分の ContainerPose として持つコンテナ
+class OdomFrameContainer {
+public:
+    OdomFrameContainer(std::string mapper, std::string map_frame)
+        : mapper_(std::move(mapper)), map_frame_(std::move(map_frame)) {}
+
+    // mapper の map -> odom を読む。mapper が無い・初期化前なら nullopt
+    std::optional<std::pair<Pose2D, double>> read() const {
+        std::lock_guard<std::mutex> lock(registry::mutex());
+        auto it = registry::table().find(mapper_);
+        if (it == registry::table().end()) return std::nullopt;
+        const auto m2o = it->second->map_to_odom();
+        if (!m2o) return std::nullopt;
+        return std::make_pair(*m2o, it->second->odom_time());
+    }
+
+    const std::string& mapper() const { return mapper_; }
+    const std::string& map_frame() const { return map_frame_; }
+
+private:
+    std::string mapper_;
+    std::string map_frame_;
+};
+
+static auto gmapping_odom_frame_manif = ContainerManifest("gmapping_odom_frame");
+OdomFrameContainer* gmapping_odom_frame(juiz::CapsuleMap args) {
+    const std::string mapper = args.has("mapper") ? args.get_string("mapper") : std::string("mapper0");
+    const std::string map_frame = args.has("map_frame") ? args.get_string("map_frame") : std::string("map");
+    return new OdomFrameContainer(mapper, map_frame);
+}
+COMPONENT_CONTAINER_FACTORY(gmapping_odom_frame_manif, gmapping_odom_frame);
+
+static auto gmapping_odom_frame_update_manif = ProcessManifest("gmapping_odom_frame_update")
+                                                    .add_typed_arg<Pose2DStamped>("odom", "odometry (only a trigger)")
+                                                    .returns<Pose2DStamped>();
+std::optional<Pose2DStamped> gmapping_odom_frame_update(OdomFrameContainer* c, const Pose2DStamped&) {
+    // juiz の Value 以外の例外を C ABI の外へ出さない (guarded と同じ理由)
+    try {
+        const auto r = c->read();
+        Pose2DStamped out;
+        out.header.frame_id = c->map_frame();
+        if (!r) return out;  // mapper がまだ地図を作り始めていない (ContainerPose は作ったときの単位のまま)
+        const Pose2D& p = r->first;
+        juiz::set_pose(c, c->map_frame(),
+                       juiz::make_pose(p.x, p.y, 0.0, 0.0, 0.0, std::sin(p.theta / 2.0), std::cos(p.theta / 2.0)));
+        out.header.stamp = to_time(r->second);
+        out.pose.position.x = p.x;
+        out.pose.position.y = p.y;
+        out.pose.theta = p.theta;
+        return out;
+    } catch (const std::exception& e) {
+        // 書けない (map -> このコンテナ の Transform が無いなど)。juiz の側にエラーとして返る
+        std::cerr << "gmapping_odom_frame_update: " << e.what() << std::endl;
+        return std::nullopt;
+    }
+}
+COMPONENT_CONTAINER_PROCESS_FACTORY(OdomFrameContainer, gmapping_odom_frame_update_manif, gmapping_odom_frame_update);
 
 static auto gmapping_set_odometry_manif =
     ProcessManifest("gmapping_set_odometry").add_typed_arg<Pose2DStamped>("odom", "odometry pose");
@@ -423,6 +534,7 @@ auto component_manifest() {
                            .add_process(gmapping_get_map_info_manifest())
                            .add_process(gmapping_save_map_manifest())
                            .add_process(gmapping_reset_manifest())
-                           .add_process(gmapping_get_state_manifest()));
+                           .add_process(gmapping_get_state_manifest()))
+        .add_container(gmapping_odom_frame_manifest().add_process(gmapping_odom_frame_update_manifest()));
 }
 DEFINE_COMPONENT_MANIFEST_ENTRY_POINT(component_manifest)
