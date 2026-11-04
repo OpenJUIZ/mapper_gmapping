@@ -129,6 +129,11 @@ jobs:
           python3 -u scripts/integration_test.py \
             --mobile-sim-juizapp ../mobile_sim_dist/mobile_sim-*.juizapp --juizapp dist/*.juizapp \
             --out build/package_map
+      - name: Test the package with juiz run --depend over HTTP
+        # juiz run が conf の Transform の終点 ipc://mobile_sim/... も --depend のつなぎ先に置き換えること(juiz 0.2.2、#425)
+        run: |
+          python3 -u scripts/integration_test.py \
+            --mobile-sim-juizapp ../mobile_sim_dist/mobile_sim-*.juizapp --juizapp dist/*.juizapp --depend-http
       - uses: actions/upload-artifact@v4
         with:
           name: juizapp

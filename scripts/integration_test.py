@@ -47,6 +47,8 @@ def main():
     ap.add_argument("--mobile-sim", type=Path, help="mobile_sim のリポジトリ(app/app.conf を使う)")
     ap.add_argument("--mobile-sim-juizapp", type=Path, help="mobile_sim の .juizapp(juiz run で動かす)")
     ap.add_argument("--juizapp", type=Path, help="mapper_gmapping の .juizapp(juiz run で動かす。ポートは 8001)")
+    ap.add_argument("--depend-http", action="store_true",
+                    help="--juizapp を juiz run --depend mobile_sim=<mobile_sim の HTTP> で動かす(juiz 0.2.2、#425 の書き換えを確かめる)")
     ap.add_argument("--sim-port", type=int, default=18000)
     ap.add_argument("--port", type=int, default=18001)
     ap.add_argument("--speed", type=float, default=0.5)
@@ -92,7 +94,10 @@ def main():
             base = "http://localhost:8001"
             work = tempfile.mkdtemp()
             env = dict(os.environ, JUIZ_CACHE_DIR=os.path.join(work, "cache"))
-            procs.append(start([args.juiz, "run", str(args.juizapp.resolve())], work, env))
+            cmd = [args.juiz, "run", str(args.juizapp.resolve())]
+            if args.depend_http:
+                cmd += ["--depend", f"mobile_sim={sim}"]
+            procs.append(start(cmd, work, env))
         else:
             base = f"http://localhost:{args.port}"
             conf = (ROOT / "app" / "app.conf").read_text().replace('"port": 8001', f'"port": {args.port}')
@@ -234,6 +239,17 @@ def push_cmd_vel(sim, vx, omega):
         r.read()
 
 
+def check_readonly(base):
+    """読むだけの Process は readonly の ContainerProcess (juiz 0.2.2、#377)。SLAM を進めるものは readonly でない"""
+    def readonly(name, kind):
+        ident = f"{base}/container_process/{name}::gmapping_{kind}:mapper0"
+        return api(base, "container_process/profile_full", {"identifier": ident}).get("readonly", False)
+
+    ro = [k for k in ("get_pose", "get_map", "get_map_info", "save_map", "get_state") if readonly(f"{k}0", k)]
+    check(len(ro) == 5, f"the getters of mapper0 are readonly ({ro})")
+    check(not readonly("add_scan0", "add_scan"), "gmapping_add_scan is not readonly")
+
+
 def check(cond, msg):
     if not cond:
         sys.exit("FAILED: " + msg)
@@ -313,6 +329,12 @@ def run(sim, base, args):
     )
     check(st["pose_error"] == "", f"mapper writes its ContainerPose without errors ({st['pose_error']!r})")
     check_single_tree(sim, base, st, slam)
+    check_readonly(base)
+    if args.depend_http:
+        # 同じ機械なので ipc://mobile_sim のままでも動いてしまう。mobile_sim にできた Transform の始点が HTTP であることを見る
+        ts = [t for t in api(sim, "transform/list") if "slam_odom0" in t]
+        check(len(ts) == 1 and ts[0].startswith("transform://http://"),
+              f"juiz run --depend made the transform over HTTP ({ts})")
 
     info = mapper_call(base, "get_map_info0", "get_map_info")
     png = mapper_call(base, "get_map0", "get_map", raw=True)
