@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(mapper_gmapping VERSION 0.1.0 LANGUAGES CXX)
+project(mapper_gmapping VERSION 0.2.0 LANGUAGES CXX)
 
 # GMapping (OpenJUIZ/openslam_gmapping) で SLAM をする juiz のコンポーネント。計画は docs/plan.md
 #
