@@ -17,7 +17,7 @@ concurrency:
 
 env:
   # パッケージのテストで動かす mobile_sim(Transformations と lidar_mount を持つ 0.3.0 以降)
-  MOBILE_SIM_REF: main
+  MOBILE_SIM_REF: claude/project-thread-ur68ns  # mobile_sim#25 (juiz 0.2.1) がマージされたら main に戻す
 
 jobs:
   versions:

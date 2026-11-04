@@ -17,7 +17,7 @@ concurrency:
 env:
   IMAGE: ghcr.io/openjuiz/mapper_gmapping
   # 結合テストでつなぐ mobile_sim。この ref からイメージをビルドして compose に渡す
-  MOBILE_SIM_REF: main
+  MOBILE_SIM_REF: claude/project-thread-ur68ns  # mobile_sim#25 (juiz 0.2.1) がマージされたら main に戻す
   MOBILE_SIM_IMAGE: mobile_sim:ci
 
 jobs:
