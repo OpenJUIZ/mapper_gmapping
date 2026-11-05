@@ -9,7 +9,7 @@
 [Releases](https://github.com/OpenJUIZ/mapper_gmapping/releases) から `mapper_gmapping-<version>.juizapp` を、[mobile_sim の Releases](https://github.com/OpenJUIZ/mobile_sim/releases) から 0.3 系の `mobile_sim-<version>.juizapp` を取ってきます。
 
 ```sh
-pip install juiz-cli==0.2.2
+pip install juiz-cli==0.2.4
 juiz run mobile_sim-<version>.juizapp      # 先に動かしておく(ipc://mobile_sim、http://localhost:8000/)
 juiz run mapper_gmapping-<version>.juizapp     # 別の端末で。ブラウザで http://localhost:8001/ を開く
 ```
@@ -51,14 +51,14 @@ CMake 3.16 以降と C++17 のコンパイラが要ります。
 ```sh
 git clone --recursive https://github.com/OpenJUIZ/mapper_gmapping
 cd mapper_gmapping
-sdk="$(scripts/fetch_juiz_sdk.sh 0.2.2)"   # juiz の Releases から juiz_sdk を取って .juiz_sdk/ に展開する
+sdk="$(scripts/fetch_juiz_sdk.sh 0.2.4)"   # juiz の Releases から juiz_sdk を取って .juiz_sdk/ に展開する
 cmake -B build -DCMAKE_PREFIX_PATH="$sdk"
 cmake --build build
 ctest --test-dir build
 ```
 
-- juiz_sdk の版は、使う juiz の版と完全に一致させます(既定は 0.2.2)。
-- C++ のプラグインは C ABI なので、Rust のプラグインと違って juiz をビルドした rustc を揃える必要はありません。`pip install juiz-cli==0.2.2` の juiz で読めます。
+- juiz_sdk の版は、使う juiz の版と完全に一致させます(既定は 0.2.4)。
+- C++ のプラグインは C ABI なので、Rust のプラグインと違って juiz をビルドした rustc を揃える必要はありません。`pip install juiz-cli==0.2.4` の juiz で読めます。
 - juiz_sdk が無いときは `-DMAPPER_GMAPPING_BUILD_COMPONENT=OFF` で `src/core` とテストだけをビルドできます。
 
 ### SLAM 本体(`src/core`)
@@ -82,7 +82,7 @@ mapper_gmapping::save_map(grid, "maps/room");    // maps/room.yaml と maps/room
 ### juiz で動かす
 
 ```sh
-pip install juiz-cli==0.2.2
+pip install juiz-cli==0.2.4
 scripts/dev_plugin.sh          # プラグインと libjuiz_sdk を app/plugins/<target>/ に置く
 python3 scripts/smoke_test.py  # juiz を起動して、HTTP からプロセスを呼ぶ
 ```
@@ -111,7 +111,6 @@ http://localhost:8001/ を開くと、育っていく地図、推定した姿勢
 | `gmapping_save_map` | `path` | `<path>.yaml` と `<path>.png`(ROS map_server の形式)を書き、YAML のパスを返す |
 | `gmapping_reset` | なし | なし(地図を捨てて最初から) |
 | `gmapping_get_state` | なし | 粒子、軌跡、オドメトリ、`map_to_odom` など(画面用) |
-| `gmapping_odom_frame_update`(コンテナ `gmapping_odom_frame`) | `odom`(トピックで受ける) | mapper の `map_to_odom` を自分の ContainerPose として書く |
 
 GMapping の引数(`particles`、`delta`、`xmin` など slam_gmapping と同じ名前)と `laser_pose`(トピック `lidar_mount` が来るまでの取付位置)、`map_update_interval` はコンテナの引数で変えられます。
 
@@ -121,9 +120,10 @@ juiz 0.2 の Transformations を使い、推定した姿勢を `mapper0` の Con
 
 - `app/app.conf` に Anchor `map`(SLAM の地図の座標系)と Transform `map -> mapper0` があり、`mapper0` はスキャンのたびに推定した姿勢を書きます。`juiz container pose mapper0 --reference map -s http://localhost:8001` や管理画面の木で見られます。基準はコンテナの引数 `map_frame`(既定 `map`、空なら書かない)で変えられます。画面の推定位置もこの ContainerPose から読み、状態の欄に「座標系」(書けないときはその理由)と、`lidar_mount` から受け取った「LiDAR の取付位置」を出します。
 - LiDAR の取付位置は mobile_sim の Transform `robot0 -> lidar0` が持ち、トピック `lidar_mount` で届きます。`wait_laser_pose: true` のときは、届くまでスキャンを使いません。
-- juiz 0.2.1 の System をまたぐ Transform で、mobile_sim の座標系と 1 本の木にしています。コンテナ `slam_odom0`(型 `gmapping_odom_frame`)が SLAM の推定したオドメトリの原点(ROS の map -> odom)を `map` から見た自分の位置として書き、conf の Transform `slam_odom0 -> ipc://mobile_sim/container/odom0::static_anchor` は mobile_sim に回されて作られます。mobile_sim は `slam_odom0` の位置を 20 Hz で取りに来るので、mobile_sim の中で `map -> slam_odom0 -> odom0 -> robot0 -> lidar0` がつながり、`juiz container pose lidar0 --reference map`(mobile_sim の 8000 番)が読めます。mapper の側からも `/api/container/pose?identifier=ipc://mobile_sim/container/lidar0::mobile_lidar&reference=map` で読めます。
+- juiz 0.2.1 の System をまたぐ Transform で、mobile_sim の座標系と 1 本の木にしています。Anchor `slam_odom0` が SLAM の推定したオドメトリの原点(ROS の map -> odom)で、`mapper0` がスキャンのたびに Transform `map -> slam_odom0` の値を `set_transform` で書きます(juiz 0.2.4。conf でこの Transform の `writers` に `mapper0` を入れ、コンテナの引数 `odom_frame: slam_odom0` で書き先を決めます。空なら書きません)。conf の Transform `slam_odom0 -> ipc://mobile_sim/container/odom0::static_anchor` は mobile_sim に回されて作られます。mobile_sim は `slam_odom0` の位置を 20 Hz で取りに来るので、mobile_sim の中で `map -> slam_odom0 -> odom0 -> robot0 -> lidar0` がつながり、`juiz container pose lidar0 --reference map`(mobile_sim の 8000 番)が読めます。mapper の側からも `/api/container/pose?identifier=ipc://mobile_sim/container/lidar0::mobile_lidar&reference=map` で読めます。
 - この Transform の終点は既定のつなぎ先 `ipc://mobile_sim/...` で書いています。juiz 0.2.2 から `juiz run` がこれを決まったつなぎ先に置き換えるので、`juiz run --depend mobile_sim=http://192.168.0.10:8000` で別の機械の mobile_sim にもそのままつながります(juiz#425)。`juiz -f` で動かすときは置き換わらないので、Docker では `entrypoint.sh` が置き換えます。
 - 地図・姿勢・状態を読むだけの Process(`gmapping_get_pose`・`get_map`・`get_map_info`・`save_map`・`get_state`)は readonly です(juiz 0.2.2)。juiz は読み出しロックで呼ぶので、画面が状態と地図を同時に取りに来ても互いに待ちません。
+- Process の中で投げた例外(書けないパスへの `save_map` など)は juiz_sdk が捕まえ、例外の文を付けたエラーとして呼び手に返します(juiz 0.2.3、juiz#400)。mapper はそのまま動き続けます。
 
 結合テストは mobile_sim を部屋で一周させ、SLAM の姿勢と地図を真の値と比べます(手元では 115 秒走って誤差 0.011 m、オドメトリだけだと 0.69 m、占有セルの 96% が真の壁の 0.1 m 以内)。
 
