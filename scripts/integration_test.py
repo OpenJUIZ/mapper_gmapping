@@ -349,15 +349,16 @@ def run(sim, base, args):
     out.mkdir(parents=True, exist_ok=True)
     # mapper から見たパス(コンテナの中で動かすときは違う)。地図を確かめるのは手元の out で
     mout = Path(args.mapper_out) if args.mapper_out else out
-    # 書けないパスはエラーになるが、mapper は落ちない
+    # 書けないパスはエラーになるが、mapper は落ちない。例外の文は juiz_sdk が捕まえて呼び手に返す (juiz 0.2.3、#400)
     try:
         mapper_call(base, "save_map0", "save_map", {"path": str(mout / "no" / "such" / "dir" / "map")})
-        bad = None
+        bad, body = None, ""
     except urllib.error.HTTPError as e:
-        bad = e.code
+        bad, body = e.code, e.read().decode("utf-8", "replace")
     check(bad is not None, f"save_map to a missing directory is an error (HTTP {bad})")
+    check("cannot write" in body, f"the error tells why ({body.strip()[:120]!r})")
     st = mapper_call(base, "get_state0", "get_state")
-    check("cannot write" in st["last_error"], f"mapper survives and reports it ({st['last_error']!r})")
+    check(st["initialized"], "mapper survives it")
     yaml = mapper_call(base, "save_map0", "save_map", {"path": str(mout / "map")})
     check((out / "map.yaml").exists() and (out / "map.png").exists(), f"save_map writes {yaml}")
     compare_maps(sim, read_png(out / "map.png"), info)
