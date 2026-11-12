@@ -9,7 +9,7 @@
 [Releases](https://github.com/OpenJUIZ/mapper_gmapping/releases) から `mapper_gmapping-<version>.juizapp` を、[mobile_sim の Releases](https://github.com/OpenJUIZ/mobile_sim/releases) から 0.3 系の `mobile_sim-<version>.juizapp` を取ってきます。
 
 ```sh
-pip install juiz-cli==0.2.4
+pip install juiz-cli==0.2.7
 juiz run mobile_sim-<version>.juizapp      # 先に動かしておく(ipc://mobile_sim、http://localhost:8000/)
 juiz run mapper_gmapping-<version>.juizapp     # 別の端末で。ブラウザで http://localhost:8001/ を開く
 ```
@@ -51,14 +51,14 @@ CMake 3.16 以降と C++17 のコンパイラが要ります。
 ```sh
 git clone --recursive https://github.com/OpenJUIZ/mapper_gmapping
 cd mapper_gmapping
-sdk="$(scripts/fetch_juiz_sdk.sh 0.2.4)"   # juiz の Releases から juiz_sdk を取って .juiz_sdk/ に展開する
+sdk="$(scripts/fetch_juiz_sdk.sh 0.2.7)"   # juiz の Releases から juiz_sdk を取って .juiz_sdk/ に展開する
 cmake -B build -DCMAKE_PREFIX_PATH="$sdk"
 cmake --build build
 ctest --test-dir build
 ```
 
-- juiz_sdk の版は、使う juiz の版と完全に一致させます(既定は 0.2.4)。
-- C++ のプラグインは C ABI なので、Rust のプラグインと違って juiz をビルドした rustc を揃える必要はありません。`pip install juiz-cli==0.2.4` の juiz で読めます。
+- juiz_sdk の版は、使う juiz の版と完全に一致させます(既定は 0.2.7)。
+- C++ のプラグインは C ABI なので、Rust のプラグインと違って juiz をビルドした rustc を揃える必要はありません。`pip install juiz-cli==0.2.7` の juiz で読めます。
 - juiz_sdk が無いときは `-DMAPPER_GMAPPING_BUILD_COMPONENT=OFF` で `src/core` とテストだけをビルドできます。
 
 ### SLAM 本体(`src/core`)
@@ -82,7 +82,7 @@ mapper_gmapping::save_map(grid, "maps/room");    // maps/room.yaml と maps/room
 ### juiz で動かす
 
 ```sh
-pip install juiz-cli==0.2.4
+pip install juiz-cli==0.2.7
 scripts/dev_plugin.sh          # プラグインと libjuiz_sdk を app/plugins/<target>/ に置く
 python3 scripts/smoke_test.py  # juiz を起動して、HTTP からプロセスを呼ぶ
 ```
