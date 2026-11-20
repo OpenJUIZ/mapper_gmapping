@@ -1,7 +1,8 @@
 // mapper_gmapping のブラウザ画面
 //
 // juiz の HTTP ブローカーの /api/container_process/call で ContainerProcess を呼ぶ。
-// - コンテナ gmapping: get_state(5 Hz)、get_map と get_map_info(地図が更新されたとき)、save_map、reset
+// - コンテナ gmapping: get_state(5 Hz)、get_map と get_map_info(地図が更新されたときとダウンロードのとき)、save_map、reset
+// - 地図のダウンロード: get_map の PNG と、get_map_info から作った map_server の YAML をブラウザに落とす(zip か別々)
 // - juiz 0.2 の Transformations: 推定した姿勢は mapper の ContainerPose(/api/container/pose、基準は map_frame)から読む。
 //   読めなければ get_state の pose を使う
 // - mobile_sim(subsystem としてつながっていれば): get_state(真の姿勢とスキャン)、set_velocity(操作)
@@ -62,6 +63,94 @@ class JuizClient {
     if (!res.ok) throw new Error(`${type}: ${res.status} ${await res.text()}`);
     return asBlob ? res.blob() : res.json();
   }
+}
+
+// ---- 地図のダウンロード ----
+
+// ROS map_server の YAML。mapper の save_map(src/core/map_io.cpp)と同じ項目
+function mapYaml(info, image) {
+  const [ox, oy, oth] = info.origin;
+  return `image: ${image}\n` +
+    `resolution: ${info.resolution}\n` +
+    `origin: [${ox}, ${oy}, ${oth}]\n` +
+    `occupied_thresh: ${info.occupied_thresh ?? 0.65}\n` +
+    `free_thresh: ${info.free_thresh ?? 0.196}\n` +
+    `negate: ${info.negate ?? 0}\n`;
+}
+
+function saveBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(data) {
+  let c = 0xffffffff;
+  for (let i = 0; i < data.length; i++) c = CRC_TABLE[(c ^ data[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// 圧縮しない (stored) zip。files は [{ name, data: Uint8Array }]
+function makeZip(files) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  const now = new Date();
+  const time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);       // 展開に要る版
+    local.setUint16(6, 0x0800, true);   // 名前は UTF-8
+    local.setUint16(8, 0, true);        // stored
+    local.setUint16(10, time, true);
+    local.setUint16(12, date, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, f.data.length, true);
+    local.setUint32(22, f.data.length, true);
+    local.setUint16(26, name.length, true);
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true);
+    cd.setUint16(4, 20, true);
+    cd.setUint16(6, 20, true);
+    cd.setUint16(8, 0x0800, true);
+    cd.setUint16(10, 0, true);
+    cd.setUint16(12, time, true);
+    cd.setUint16(14, date, true);
+    cd.setUint32(16, crc, true);
+    cd.setUint32(20, f.data.length, true);
+    cd.setUint32(24, f.data.length, true);
+    cd.setUint16(28, name.length, true);
+    cd.setUint32(42, offset, true);
+    parts.push(local, name, f.data);
+    central.push(cd, name);
+    offset += 30 + name.length + f.data.length;
+  }
+  const cdSize = central.reduce((n, p) => n + p.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, files.length, true);
+  end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true);
+  end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end], { type: "application/zip" });
 }
 
 // ---- 座標変換 ----
@@ -367,14 +456,41 @@ async function main() {
       say(`保存しました: ${yaml}`);
     } catch (err) { say(`保存できませんでした: ${err.message}`); }
   });
-  $("download").addEventListener("click", () => {
-    if (!map.blob) { say("地図がまだありません"); return; }
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(map.blob);
-    a.download = "map.png";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  });
+  // 保存先の名前の最後の部分(ディレクトリや拡張子は落とす)。ダウンロードするファイルの名前に使う
+  const baseName = () => {
+    const n = $("save_path").value.trim().split(/[\\/]/).pop().replace(/\.(ya?ml|png|zip)$/i, "");
+    return n || "map";
+  };
+  // ダウンロードの直前に地図を取り直す(画面の地図は MAP_POLL_MS ごとにしか更新しない)
+  const fetchMapFiles = async () => {
+    const png = await client.call("gmapping_get_map", {}, true);
+    const info = await client.call("gmapping_get_map_info");
+    if (!info.width || !info.height) throw new Error("地図がまだありません");
+    const name = baseName();
+    return { name, png, yaml: mapYaml(info, `${name}.png`) };
+  };
+  const download = (handler) => async () => {
+    try { say(await handler()); } catch (err) { say(`ダウンロードできませんでした: ${err.message}`); }
+  };
+  $("download_zip").addEventListener("click", download(async () => {
+    const f = await fetchMapFiles();
+    const zip = makeZip([
+      { name: `${f.name}.yaml`, data: new TextEncoder().encode(f.yaml) },
+      { name: `${f.name}.png`, data: new Uint8Array(await f.png.arrayBuffer()) },
+    ]);
+    saveBlob(zip, `${f.name}.zip`);
+    return `${f.name}.zip(${f.name}.yaml と ${f.name}.png)をダウンロードしました`;
+  }));
+  $("download_yaml").addEventListener("click", download(async () => {
+    const f = await fetchMapFiles();
+    saveBlob(new Blob([f.yaml], { type: "application/x-yaml" }), `${f.name}.yaml`);
+    return `${f.name}.yaml をダウンロードしました(画像は ${f.name}.png として同じ場所に置く)`;
+  }));
+  $("download").addEventListener("click", download(async () => {
+    const f = await fetchMapFiles();
+    saveBlob(f.png, `${f.name}.png`);
+    return `${f.name}.png をダウンロードしました`;
+  }));
   $("reset").addEventListener("click", async () => {
     try {
       await client.call("gmapping_reset");
