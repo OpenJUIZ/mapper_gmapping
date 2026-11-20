@@ -24,3 +24,6 @@ dd.bad { color: #c00; }
 .key.particle { background: #2d6ad6; }
 .key.truth { background: transparent; border: 2px solid #1a8a3a; }
 .key.odom { background: transparent; border: 2px dashed #888; }
+.buttons { display: flex; gap: 0.4rem; }
+.buttons button { flex: 1; }
+#message { overflow-wrap: anywhere; }

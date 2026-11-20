@@ -1,5 +1,6 @@
 // ブラウザ画面の確認(M3)。mobile_sim と mapper_gmapping を起動しておき、Playwright で開いて操作する
 // 使い方: node scripts/ui_test.js [http://localhost:8001/] [スクリーンショットの保存先]
+const fs = require("fs");
 const { chromium } = require("playwright");
 
 const url = process.argv[2] || "http://localhost:8001/";
@@ -12,7 +13,7 @@ function check(cond, msg) {
 
 (async () => {
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1100, height: 820 } });
+  const page = await browser.newPage({ viewport: { width: 1100, height: 820 }, acceptDownloads: true });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(url);
@@ -58,6 +59,31 @@ function check(cond, msg) {
   await page.waitForFunction(() => document.getElementById("message").textContent !== "");
   const msg = await page.textContent("#message");
   check(msg.includes("/tmp/mapper_gmapping_ui_test_map.yaml"), `save button writes the map (${msg})`);
+  const saved = fs.readFileSync("/tmp/mapper_gmapping_ui_test_map.yaml", "utf8");
+
+  // ダウンロードのボタン(名前は保存先の最後の部分)
+  const grab = async (button) => {
+    const [dl] = await Promise.all([page.waitForEvent("download"), page.click(button)]);
+    return { name: dl.suggestedFilename(), data: fs.readFileSync(await dl.path()) };
+  };
+  const yamlDl = await grab("#download_yaml");
+  check(yamlDl.name === "mapper_gmapping_ui_test_map.yaml", `YAML download is named after the save path (${yamlDl.name})`);
+  const yamlText = yamlDl.data.toString("utf8");
+  check(/^image: mapper_gmapping_ui_test_map\.png$/m.test(yamlText) && /^resolution: /m.test(yamlText) &&
+        /^origin: \[/m.test(yamlText), `YAML download is a map_server YAML (${JSON.stringify(yamlText)})`);
+  const keys = (t) => t.split("\n").map((l) => l.split(":")[0]).join(",");
+  check(keys(yamlText) === keys(saved), `YAML download has the same keys as save_map (${keys(saved)})`);
+  const pngDl = await grab("#download");
+  check(pngDl.name === "mapper_gmapping_ui_test_map.png" && pngDl.data.subarray(1, 4).toString() === "PNG",
+        `PNG download is a PNG (${pngDl.name}, ${pngDl.data.length} bytes)`);
+  const zipDl = await grab("#download_zip");
+  check(zipDl.name === "mapper_gmapping_ui_test_map.zip" && zipDl.data.readUInt32LE(0) === 0x04034b50,
+        `zip download is a zip (${zipDl.name}, ${zipDl.data.length} bytes)`);
+  const zipPath = shot.replace(/\.png$/, "") + "_map.zip";
+  fs.writeFileSync(zipPath, zipDl.data);
+  const entries = require("child_process").execFileSync("python3", ["-c",
+    "import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(' '.join(z.namelist()))", zipPath]).toString().trim();
+  check(entries === "mapper_gmapping_ui_test_map.yaml mapper_gmapping_ui_test_map.png", `zip holds the YAML and the PNG (${entries})`);
 
   // 地図を描いたキャンバスに、不明(灰)以外の画素がある
   const painted = await page.evaluate(() => {

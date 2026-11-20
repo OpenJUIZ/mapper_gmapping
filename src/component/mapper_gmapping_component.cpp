@@ -13,7 +13,7 @@
 //   gmapping_get_pose()          推定した姿勢 (juiz_std.geometry.Pose2DStamped、frame_id は map)
 //   gmapping_get_map()           地図の画像 (8 bit のグレースケール。占有 0、空き 254、不明 205)
 //   gmapping_get_map_info()      地図の解像度・原点・大きさ (mapconf と同じ項目)
-//   gmapping_save_map(path)      <path>.yaml と <path>.png に保存する
+//   gmapping_save_map(path)      <path>.yaml と <path>.png に保存し、書いた YAML の絶対パスを返す
 //   gmapping_reset()             地図と粒子を捨てて、やり直す
 //   gmapping_get_state()         画面用: 姿勢、粒子、軌跡、更新回数など
 //   (get_pose・get_map・get_map_info・save_map・get_state は readonly の ContainerProcess。juiz 0.2.2、#377)
@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -271,7 +272,10 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         refresh_map(true);
         mapper_gmapping::save_map(map_, path);
-        return path + ".yaml";
+        // juizapp として動くとカレントディレクトリが分かりにくいので、書いた場所を絶対パスで返す
+        std::error_code ec;
+        const auto yaml = std::filesystem::absolute(path + ".yaml", ec);
+        return ec ? path + ".yaml" : yaml.lexically_normal().string();
     }
 
     bool reset() {

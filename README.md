@@ -14,7 +14,7 @@ juiz run mobile_sim-<version>.juizapp      # 先に動かしておく(ipc://mobi
 juiz run mapper_gmapping-<version>.juizapp     # 別の端末で。ブラウザで http://localhost:8001/ を開く
 ```
 
-mapper は `juizapp.yaml` の `depends`(`mobile_sim >=0.3.1, <0.4`)を見て、動いている mobile_sim の版を確かめてからつなぎます。画面のキーかパッドでロボットを動かすと地図が育ち、「地図を保存」で ROS map_server の形式(YAML + PNG)に書き出せます。保存先の相対パスは `juiz run` を起動したディレクトリからです。
+mapper は `juizapp.yaml` の `depends`(`mobile_sim >=0.3.1, <0.4`)を見て、動いている mobile_sim の版を確かめてからつなぎます。画面のキーかパッドでロボットを動かすと地図が育ち、「地図をダウンロード」で ROS map_server の形式(YAML + PNG を zip にまとめたもの。YAML だけ・PNG だけも可)をブラウザに落とせます。「mapper の側に保存」は mapper のプロセスにファイルを書かせるもので、相対パスは `juiz run` を起動したディレクトリ(juizapp の展開先ではありません)から解決され、書いた場所は画面に絶対パスで出ます。
 
 対応するターゲット: Linux(x86_64、aarch64)、macOS(Apple シリコン、Intel)、Windows(x86_64)。
 
@@ -98,7 +98,7 @@ cd app && juiz -f app.conf -d --ipc mobile_sim
 cd app && juiz -f app.conf -d
 ```
 
-http://localhost:8001/ を開くと、育っていく地図、推定した姿勢と軌跡、粒子を見られます。mobile_sim につながっていれば、真の姿勢とオドメトリだけの姿勢を重ねて誤差を出し、WASD・矢印キー・パッドでロボットを動かせます(mobile_sim の処理は mapper の HTTP から `ipc://mobile_sim/...` で呼ぶので、mobile_sim 側の設定は要りません)。地図の保存(`save_map`)、PNG のダウンロード、作り直しのボタンもあります。画面は `app/web/` にあります。`curl` などで呼べる主な ContainerProcess(コンテナ `gmapping`、インスタンス `mapper0`):
+http://localhost:8001/ を開くと、育っていく地図、推定した姿勢と軌跡、粒子を見られます。mobile_sim につながっていれば、真の姿勢とオドメトリだけの姿勢を重ねて誤差を出し、WASD・矢印キー・パッドでロボットを動かせます(mobile_sim の処理は mapper の HTTP から `ipc://mobile_sim/...` で呼ぶので、mobile_sim 側の設定は要りません)。地図のダウンロード(YAML + PNG の zip、YAML だけ、PNG だけ。`get_map` と `get_map_info` から作る)、mapper の側への保存(`save_map`。書いた YAML の絶対パスを返す)、作り直しのボタンもあります。画面は `app/web/` にあります。`curl` などで呼べる主な ContainerProcess(コンテナ `gmapping`、インスタンス `mapper0`):
 
 | ContainerProcess | 引数 | 戻り値 |
 | --- | --- | --- |

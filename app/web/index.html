@@ -24,10 +24,15 @@
     </section>
     <aside>
       <h2>地図</h2>
-      <label>保存先 <input id="save_path" type="text" value="map" size="16"></label>
-      <p class="hint">mapper のカレントディレクトリからの相対パス。&lt;パス&gt;.yaml と .png を書く</p>
-      <button id="save" type="button">地図を保存</button>
-      <button id="download" type="button">PNG をダウンロード</button>
+      <label>名前 <input id="save_path" type="text" value="map" size="16"></label>
+      <button id="download_zip" type="button">地図をダウンロード(YAML + PNG の zip)</button>
+      <div class="buttons">
+        <button id="download_yaml" type="button">YAML だけ</button>
+        <button id="download" type="button">PNG だけ</button>
+      </div>
+      <p class="hint">ブラウザに &lt;名前&gt;.yaml と &lt;名前&gt;.png を落とす。そのまま mobile_sim や localization_amcl に読ませられる</p>
+      <button id="save" type="button">mapper の側に保存</button>
+      <p class="hint">mapper のカレントディレクトリからの相対パスに書く。書いた場所は下に絶対パスで出る</p>
       <button id="reset" type="button">地図を捨てて最初から</button>
       <p id="message" class="hint" role="status"></p>
       <label><input id="show_particles" type="checkbox" checked> 粒子を描く</label>
