@@ -9,7 +9,7 @@
 [Releases](https://github.com/OpenJUIZ/mapper_gmapping/releases) から `mapper_gmapping-<version>.juizapp` を、[mobile_sim の Releases](https://github.com/OpenJUIZ/mobile_sim/releases) から 0.3 系の `mobile_sim-<version>.juizapp` を取ってきます。
 
 ```sh
-pip install juiz-cli==0.3.2
+pip install juiz-cli==0.3.7
 juiz run mobile_sim-<version>.juizapp      # 先に動かしておく(ipc://mobile_sim、http://localhost:8000/)
 juiz run mapper_gmapping-<version>.juizapp     # 別の端末で。ブラウザで http://localhost:8001/ を開く
 ```
@@ -17,6 +17,20 @@ juiz run mapper_gmapping-<version>.juizapp     # 別の端末で。ブラウザ�
 mapper は `juizapp.yaml` の `depends`(`mobile_sim >=0.3.1, <0.4`)を見て、動いている mobile_sim の版を確かめてからつなぎます。画面のキーかパッドでロボットを動かすと地図が育ち、「地図をダウンロード」で ROS map_server の形式(YAML + PNG を zip にまとめたもの。YAML だけ・PNG だけも可)をブラウザに落とせます。「mapper の側に保存」は mapper のプロセスにファイルを書かせるもので、相対パスは `juiz run` を起動したディレクトリ(juizapp の展開先ではありません)から解決され、書いた場所は画面に絶対パスで出ます。
 
 対応するターゲット: Linux(x86_64、aarch64)、macOS(Apple シリコン、Intel)、Windows(x86_64)。
+
+### 別の機械の mobile_sim につなぐ
+
+mapper は mobile_sim を名前の登録で探します(juiz 0.3.7 のネーミングサービス)。同じ機械に mobile_sim が動いていなければ、LAN で `--advertise` 付きで起動した mobile_sim を見つけてつなぎます。pip の `juiz-cli` にはこの機能が入っています([ネーミングサービス](https://openjuiz.github.io/ja/guides/naming/#lan-の自動発見mdns))。
+
+```sh
+juiz run mobile_sim-<version>.juizapp --advertise      # mobile_sim の機械で
+juiz run mapper_gmapping-<version>.juizapp             # mapper の機械で
+# using mobile_sim at http://192.168.0.10:8000 (found in the name list)
+```
+
+- マルチキャストが届かない網(Docker の bridge、一部の Wi-Fi、サブネット越え)では見つかりません。そのときは `--depend mobile_sim=http://192.168.0.10:8000` でつなぎ先を書くか、`--peer http://192.168.0.10:8000` で問い合わせ先を教えます。
+- mobile_sim は、mapper がつないできたアドレスの 8001 番にトピックを送ります。mobile_sim の機械からその番号に届くようにしてください。
+- mobile_sim がどこにも見つからないと `mobile_sim is not registered on this machine or the LAN.` で止まります。先に mobile_sim を起動してください。juiz 0.3.6 以前で動かした mobile_sim は登録されないので、そのときは `--depend mobile_sim=ipc://mobile_sim` で指定します。
 
 ### Docker
 
@@ -51,14 +65,14 @@ CMake 3.16 以降と C++17 のコンパイラが要ります。
 ```sh
 git clone --recursive https://github.com/OpenJUIZ/mapper_gmapping
 cd mapper_gmapping
-sdk="$(scripts/fetch_juiz_sdk.sh 0.3.2)"   # juiz の Releases から juiz_sdk を取って .juiz_sdk/ に展開する
+sdk="$(scripts/fetch_juiz_sdk.sh 0.3.7)"   # juiz の Releases から juiz_sdk を取って .juiz_sdk/ に展開する
 cmake -B build -DCMAKE_PREFIX_PATH="$sdk"
 cmake --build build
 ctest --test-dir build
 ```
 
-- juiz_sdk の版は、使う juiz の版と完全に一致させます((既定は 0.3.2))。
-- C++ のプラグインは C ABI なので、Rust のプラグインと違って juiz をビルドした rustc を揃える必要はありません。`pip install juiz-cli==0.3.2` の juiz で読めます。
+- juiz_sdk の版は、使う juiz の版と完全に一致させます(既定は 0.3.7)。
+- C++ のプラグインは C ABI なので、Rust のプラグインと違って juiz をビルドした rustc を揃える必要はありません。`pip install juiz-cli==0.3.7` の juiz で読めます。
 - juiz_sdk が無いときは `-DMAPPER_GMAPPING_BUILD_COMPONENT=OFF` で `src/core` とテストだけをビルドできます。
 
 ### SLAM 本体(`src/core`)
@@ -82,14 +96,14 @@ mapper_gmapping::save_map(grid, "maps/room");    // maps/room.yaml と maps/room
 ### juiz で動かす
 
 ```sh
-pip install juiz-cli==0.3.2
+pip install juiz-cli==0.3.7
 scripts/dev_plugin.sh          # プラグインと libjuiz_sdk を app/plugins/<target>/ に置く
 python3 scripts/smoke_test.py  # juiz を起動して、HTTP からプロセスを呼ぶ
 ```
 
 ### mobile_sim と動かす
 
-mobile_sim(0.3.0 以降)はトピック `odom`(`Pose2DStamped`)、`scan`(`LaserScan`)、`lidar_mount`(`PoseStamped`、ロボットから見た LiDAR の取付位置)を出します。`app/app.conf` は IPC で `mobile_sim` につなぎ、この 3 つを購読して地図を作ります。
+mobile_sim(0.3.0 以降)はトピック `odom`(`Pose2DStamped`)、`scan`(`LaserScan`)、`lidar_mount`(`PoseStamped`、ロボットから見た LiDAR の取付位置)を出します。`app/app.conf` は名前 `mobile_sim` で登録を引いてつなぎ(同じ機械なら IPC)、この 3 つを購読して地図を作ります。
 
 ```sh
 # mobile_sim のリポジトリで(scripts/dev_plugin.sh の後)
@@ -121,7 +135,7 @@ juiz 0.2 の Transformations を使い、推定した姿勢を `mapper0` の Con
 - `app/app.conf` に Anchor `map`(SLAM の地図の座標系)と Transform `map -> mapper0` があり、`mapper0` はスキャンのたびに推定した姿勢を書きます。`juiz container pose mapper0 --reference map -s http://localhost:8001` や管理画面の木で見られます。基準はコンテナの引数 `map_frame`(既定 `map`、空なら書かない)で変えられます。画面の推定位置もこの ContainerPose から読み、状態の欄に「座標系」(書けないときはその理由)と、`lidar_mount` から受け取った「LiDAR の取付位置」を出します。
 - LiDAR の取付位置は mobile_sim の Transform `robot0 -> lidar0` が持ち、トピック `lidar_mount` で届きます。`wait_laser_pose: true` のときは、届くまでスキャンを使いません。
 - juiz 0.2.1 の System をまたぐ Transform で、mobile_sim の座標系と 1 本の木にしています。Anchor `slam_odom0` が SLAM の推定したオドメトリの原点(ROS の map -> odom)で、`mapper0` がスキャンのたびに Transform `map -> slam_odom0` の値を `set_transform` で書きます(juiz 0.2.4。conf でこの Transform の `writers` に `mapper0` を入れ、コンテナの引数 `odom_frame: slam_odom0` で書き先を決めます。空なら書きません)。conf の Transform `slam_odom0 -> ipc://mobile_sim/container/odom0::static_anchor` は mobile_sim に回されて作られます。mobile_sim は `slam_odom0` の位置を 20 Hz で取りに来るので、mobile_sim の中で `map -> slam_odom0 -> odom0 -> robot0 -> lidar0` がつながり、`juiz container pose lidar0 --reference map`(mobile_sim の 8000 番)が読めます。mapper の側からも `/api/container/pose?identifier=ipc://mobile_sim/container/lidar0::mobile_lidar&reference=map` で読めます。
-- この Transform の終点は既定のつなぎ先 `ipc://mobile_sim/...` で書いています。juiz 0.2.2 から `juiz run` がこれを決まったつなぎ先に置き換えるので、`juiz run --depend mobile_sim=http://192.168.0.10:8000` で別の機械の mobile_sim にもそのままつながります(juiz#425)。`juiz -f` で動かすときは置き換わらないので、Docker では `entrypoint.sh` が置き換えます。
+- この Transform の終点は既定のつなぎ先 `ipc://mobile_sim/...` で書いています。juiz 0.2.2 から `juiz run` がこれを決まったつなぎ先(`--depend` や名前の登録・LAN で見つけた先)に置き換えるので、別の機械の mobile_sim にもそのままつながります(juiz#425)。`juiz -f` で動かすときは置き換わらないので、Docker では `entrypoint.sh` が置き換えます。
 - 地図・姿勢・状態を読むだけの Process(`gmapping_get_pose`・`get_map`・`get_map_info`・`save_map`・`get_state`)は readonly です(juiz 0.2.2)。juiz は読み出しロックで呼ぶので、画面が状態と地図を同時に取りに来ても互いに待ちません。
 - Process の中で投げた例外(書けないパスへの `save_map` など)は juiz_sdk が捕まえ、例外の文を付けたエラーとして呼び手に返します(juiz 0.2.3、juiz#400)。mapper はそのまま動き続けます。
 
